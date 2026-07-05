@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вхід - RPG Система</title>
+  <link rel="stylesheet" href="char_style.css">
+  <style>
+    /* Залишіть ті стилі, що у вас уже були, або додайте нові */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <!-- Вхід гравця -->
+    <div class="auth-card" id="loginCard">
+      <h2>Вхід</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Ім'я в Діскорд:</label>
+          <input type="text" id="loginDiscordName" required>
+        </div>
+        <div class="form-group">
+          <label>Пароль:</label>
+          <input type="password" id="loginPassword" required>
+        </div>
+        <div id="loginError" style="color:red; display:none;"></div>
+        <button type="submit">Увійти</button>
+      </form>
+      <p>Немає акаунту? <a href="#" onclick="toggleForms()">Зареєструватися</a></p>
+      <button onclick="showAdminLogin()">Увійти як Адміністратор</button>
+    </div>
+
+    <!-- Реєстрація гравця -->
+    <div class="auth-card hidden" id="registerCard">
+      <h2>Реєстрація</h2>
+      <form id="registerForm">
+        <div class="form-group">
+          <label>Нікнейм персонажа:</label>
+          <input type="text" id="regNickname" required>
+        </div>
+        <div class="form-group">
+          <label>Ім'я в Діскорд:</label>
+          <input type="text" id="regDiscordName" required>
+        </div>
+        <div class="form-group">
+          <label>Пароль:</label>
+          <input type="password" id="regPassword" required>
+        </div>
+        <div class="form-group">
+          <label>Підтвердіть пароль:</label>
+          <input type="password" id="regConfirmPassword" required>
+        </div>
+        <div id="registerError" style="color:red; display:none;"></div>
+        <div id="registerSuccess" style="color:green; display:none;"></div>
+        <button type="submit">Зареєструватися</button>
+      </form>
+      <p>Вже маєте акаунт? <a href="#" onclick="toggleForms()">Увійти</a></p>
+    </div>
+
+    <!-- Вхід адміністратора -->
+    <div class="auth-card hidden" id="adminCard">
+      <h2>Вхід Адміністратора</h2>
+      <form id="adminForm">
+        <div class="form-group">
+          <label>Пароль адміністратора:</label>
+          <input type="password" id="adminPassword" required>
+        </div>
+        <div id="adminError" style="color:red; display:none;"></div>
+        <button type="submit">Увійти</button>
+      </form>
+      <a href="#" onclick="hideAdminLogin()">← Назад</a>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

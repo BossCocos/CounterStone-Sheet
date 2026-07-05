@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Лист персонажа</title>
+  <link rel="stylesheet" href="char_style.css">
+</head>
+<body>
+  <!-- Форма повторного входу (якщо немає активної сесії) -->
+  <div id="loginFormContainer">
+    <h2>Підтвердіть вхід</h2>
+    <form id="loginAgainForm">
+      <input type="text" id="discordName" placeholder="Ім'я в Діскорд" required>
+      <input type="password" id="password" placeholder="Пароль" required>
+      <button type="submit">Увійти</button>
+    </form>
+    <p id="loginError" style="color:red;"></p>
+  </div>
+
+  <!-- Сам лист персонажа (прихований до авторизації) -->
+  <div id="playerContainer" style="display:none;">
+    <h2>Персонаж: <span id="nickname"></span></h2>
+    <p>Клас: <span id="characterClass"></span></p>
+    <p>Рівень: <span id="level"></span></p>
+    <p>Вільні очки: <span id="freePoints"></span></p>
+    
+    <div>
+      <label>XP:</label>
+      <progress id="xpBar" max="100" value="0"></progress>
+      <span id="xpText"></span>
+    </div>
+    <div>
+      <label>HP:</label>
+      <progress id="hpBar" max="100" value="0"></progress>
+      <span id="hpText"></span>
+    </div>
+    <div>
+      <label>MP:</label>
+      <progress id="manaBar" max="100" value="0"></progress>
+      <span id="manaText"></span>
+    </div>
+
+    <h3>Характеристики</h3>
+    <div id="statsList"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/player.js"></script>
+</body>
+</html>

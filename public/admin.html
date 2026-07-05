@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Адмін-панель</title>
+  <link rel="stylesheet" href="char_style.css">
+</head>
+<body>
+  <div id="adminLoginForm">
+    <h2>Вхід адміністратора</h2>
+    <input type="password" id="adminPass" placeholder="Пароль">
+    <button id="adminEnter">Увійти</button>
+    <p id="adminError" style="color:red;"></p>
+  </div>
+
+  <div id="adminContent" style="display:none;">
+    <h1>Панель адміністратора</h1>
+    <div id="playerList"></div>
+    <hr>
+    <div id="selectedPlayer" style="display:none;">
+      <h2>Редагування: <span id="selNickname"></span></h2>
+      <label>Рівень: <span id="selLevel"></span></label><br>
+      <label>XP: <input type="number" id="xpInput" value="0">
+        <button id="addXpBtn">+ XP</button>
+        <button id="subtractXpBtn">- XP</button></label><br>
+      <label>HP: <input type="number" id="hpInput" value="0">
+        <button id="setHpBtn">Встановити</button>
+        <button id="healHpBtn">+1</button>
+        <button id="damageHpBtn">-1</button></label><br>
+      <label>MP: <input type="number" id="manaInput" value="0">
+        <button id="setManaBtn">Встановити</button>
+        <button id="restoreManaBtn">+1</button>
+        <button id="drainManaBtn">-1</button></label><br>
+      <h3>Характеристики</h3>
+      <div id="adminStats"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
