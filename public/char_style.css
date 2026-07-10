@@ -195,6 +195,9 @@ body {
   position: relative;
   border-radius: 8px;
   transition: 0.2s;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   /* Ви додасте зображення через background-image */
 }
 .effect-icon:hover {
@@ -316,4 +319,66 @@ body {
 .stat-name {
   width: 100px;
   text-align: right;
+}
+
+/* Список характеристик – рівні колонки */
+#statsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 15px;
+}
+.attr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+.attr-row span:first-child {
+  width: 100px;           /* фіксована ширина назви */
+  text-transform: capitalize;
+}
+.attr-row span.attr-value {
+  width: 30px;
+  text-align: center;
+  font-weight: bold;
+}
+.attr-row button {
+  width: 36px;
+  height: 30px;
+  margin-left: 10px;
+}
+
+/* Контейнер ефектів – горизонтальний */
+#currentEffects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.effect-wrapper {
+  position: relative;
+  display: inline-block;
+}
+.effect-wrapper .delete-effect-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background: #ff3355;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  display: none;
+  box-shadow: 0 0 6px rgba(255,0,0,0.8);
+}
+.effect-wrapper:hover .delete-effect-btn {
+  display: block;
 }

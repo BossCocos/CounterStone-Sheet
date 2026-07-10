@@ -79,18 +79,22 @@ function displayPlayerData(p) {
     p.effects.forEach((eff, index) => {
       const wrapper = document.createElement('span');
       wrapper.className = 'effect-wrapper';
+
       const icon = document.createElement('span');
       icon.className = 'effect-icon';
       icon.style.backgroundImage = `url('icons/${eff.icon}.png')`;
+      icon.style.backgroundSize = 'cover';  // про всяк випадок
       icon.dataset.tooltip = eff.name;
-      if (!eff.icon) icon.textContent = eff.name.substring(0, 2);
+      if (!eff.icon) icon.textContent = eff.name.substring(0,2);
+
       const delBtn = document.createElement('button');
+      delBtn.className = 'delete-effect-btn';
       delBtn.textContent = '✕';
-      delBtn.className = 'neon-btn danger-btn';
-      delBtn.style.marginLeft = '5px';
-      delBtn.onclick = () => {
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
         socket.emit('admin:removeEffect', { discordName: selectedPlayerId, effectIndex: index });
       };
+
       wrapper.appendChild(icon);
       wrapper.appendChild(delBtn);
       effDiv.appendChild(wrapper);

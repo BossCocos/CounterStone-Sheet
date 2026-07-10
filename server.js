@@ -167,7 +167,7 @@ function sanitizePlayer(player) {
     maxHp: player.maxHp,
     currentMana: player.currentMana,
     maxMana: player.maxMana,
-    effects: player.effects,
+    effects: player.effects || [],
     stats: player.stats,
     statHistory: player.statHistory,
     className: player.className,

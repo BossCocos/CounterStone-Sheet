@@ -6,10 +6,138 @@
   <title>Вхід - RPG Система</title>
   <link rel="stylesheet" href="char_style.css">
   <style>
+    :root {
+      color-scheme: dark;
+      --panel: rgba(12, 18, 24, 0.92);
+      --panel-border: rgba(153, 214, 130, 0.24);
+      --text: #f2efe8;
+      --muted: #a8b0aa;
+      --accent: #7ed957;
+      --accent-strong: #4caf50;
+      --shadow: 0 16px 45px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(126, 217, 87, 0.16), transparent 32%),
+        linear-gradient(135deg, #07110a 0%, #101b14 50%, #050806 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .game-intro {
+      text-align: center;
+      margin-bottom: 18px;
+      max-width: 480px;
+    }
+
+    .game-intro h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 3vw, 2.4rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .game-intro p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .auth-container {
+      width: min(100%, 420px);
+    }
+
+    .auth-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .auth-card h2 {
+      margin: 0 0 16px;
+      font-size: 1.25rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(126, 217, 87, 0.16);
+    }
+
+    button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+      color: #07110a;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(78, 168, 67, 0.2);
+    }
+
+    .auth-card p,
+    .auth-card a {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .auth-card a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
+  <div class="game-intro">
+    <h1>Counter Stone</h1>
+    <p>Вхід до світу, де кожен вибір впливає на шлях героя.</p>
+  </div>
+
   <div class="auth-container">
     <!-- Вхід гравця -->
     <div class="auth-card" id="loginCard">

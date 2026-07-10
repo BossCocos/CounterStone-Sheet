@@ -100,12 +100,15 @@ function renderPlayer() {
   statsList.innerHTML = '';
   for (const [stat, value] of Object.entries(playerData.stats)) {
     const row = document.createElement('div');
+    row.className = 'attr-row';
     row.innerHTML = `
-      <span>${stat}: ${value}</span>
+      <span>${stat}</span>
+      <span class="attr-value">${value}</span>
       <button class="neon-btn plusBtn" data-stat="${stat}" ${playerData.freePoints <= 0 ? 'disabled' : ''}>+</button>
     `;
     statsList.appendChild(row);
   }
+  
 
   document.querySelectorAll('.plusBtn').forEach(btn => {
     btn.addEventListener('click', () => {
