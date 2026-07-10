@@ -6,33 +6,118 @@
   <link rel="stylesheet" href="char_style.css">
 </head>
 <body>
-  <div id="adminLoginForm">
-    <h2>Вхід адміністратора</h2>
-    <input type="password" id="adminPass" placeholder="Пароль">
-    <button id="adminEnter">Увійти</button>
-    <p id="adminError" style="color:red;"></p>
-  </div>
+  <!-- БІЧНА НАВІГАЦІЯ (така сама, як у гравця) -->
+  <nav class="side-nav">
+    <button class="icon-char active" data-tooltip="Character" id="navChar">⚔️</button>
+    <button class="icon-info" data-tooltip="Info" id="navInfo">ℹ️</button>
+    <button class="icon-map" data-tooltip="Map" id="navMap">🗺️</button>
+    <button class="icon-logout logout-btn" data-tooltip="Log out" id="navLogout">🚪</button>
+  </nav>
 
-  <div id="adminContent" style="display:none;">
-    <h1>Панель адміністратора</h1>
-    <div id="playerList"></div>
-    <hr>
-    <div id="selectedPlayer" style="display:none;">
-      <h2>Редагування: <span id="selNickname"></span></h2>
-      <label>Рівень: <span id="selLevel"></span></label><br>
-      <label>XP: <input type="number" id="xpInput" value="0">
-        <button id="addXpBtn">+ XP</button>
-        <button id="subtractXpBtn">- XP</button></label><br>
-      <label>HP: <input type="number" id="hpInput" value="0">
-        <button id="setHpBtn">Встановити</button>
-        <button id="healHpBtn">+1</button>
-        <button id="damageHpBtn">-1</button></label><br>
-      <label>MP: <input type="number" id="manaInput" value="0">
-        <button id="setManaBtn">Встановити</button>
-        <button id="restoreManaBtn">+1</button>
-        <button id="drainManaBtn">-1</button></label><br>
-      <h3>Характеристики</h3>
-      <div id="adminStats"></div>
+  <div class="main-content">
+    <div id="adminLoginForm">
+      <h2 style="color: var(--neon-green);">Вхід адміністратора</h2>
+      <input type="password" id="adminPass" placeholder="Пароль">
+      <button id="adminEnter" class="neon-btn">Увійти</button>
+      <p id="adminError" style="color:red;"></p>
+    </div>
+
+    <div id="adminContent" style="display:none;">
+      <div class="admin-panel">
+        <!-- Список гравців -->
+        <div class="player-list-panel">
+          <h3 style="color: var(--neon-green);">Гравці</h3>
+          <div id="playerList"></div>
+        </div>
+
+        <!-- Деталі гравця -->
+        <div class="player-details" id="selectedPlayer" style="display:none;">
+          <h2 style="color: var(--neon-green);" id="selNickname"></h2>
+          <p>Клас: <span id="selClass"></span></p>
+          <p>Рівень: <span id="selLevel"></span></p>
+
+          <!-- Чіткі значення для адміна -->
+          <div>
+            <span>HP: </span><span class="stat-value" id="selHp"></span>
+            <span> / </span><span class="stat-value" id="selMaxHp"></span>
+            <button class="neon-btn" id="healBtn">+1</button>
+            <button class="neon-btn danger-btn" id="damageBtn">-1</button>
+          </div>
+          <div>
+            <span>MP: </span><span class="stat-value" id="selMana"></span>
+            <span> / </span><span class="stat-value" id="selMaxMana"></span>
+            <button class="neon-btn" id="manaPlusBtn">+1</button>
+            <button class="neon-btn danger-btn" id="manaMinusBtn">-1</button>
+          </div>
+          <div>
+            <span>XP: </span><span class="stat-value" id="selXp"></span>
+            <span> / </span><span class="stat-value" id="selNextXp"></span>
+            <input type="number" id="xpDeltaInput" value="10" style="width:70px;">
+            <button class="neon-btn" id="addXpBtn">+</button>
+            <button class="neon-btn danger-btn" id="subtractXpBtn">-</button>
+          </div>
+          <div>
+            <span>Вільні очки: </span><span class="stat-value" id="selFreePoints"></span>
+            <button class="neon-btn" id="addPointBtn">+1</button>
+            <button class="neon-btn danger-btn" id="removePointBtn">-1</button>
+          </div>
+
+          <!-- Зміна імені / класу -->
+          <div style="margin-top:15px;">
+            <input type="text" id="newNickname" placeholder="Нове ім'я">
+            <button class="neon-btn" id="changeNameBtn">Змінити ім'я</button>
+          </div>
+          <div>
+            <input type="text" id="newClass" placeholder="Новий клас">
+            <button class="neon-btn" id="changeClassBtn">Змінити клас</button>
+          </div>
+
+          <!-- Управління ефектами -->
+          <div style="margin-top:15px;">
+            <h4>Ефекти</h4>
+            <div id="currentEffects"></div>
+            <select id="effectSelect">
+              <option value="attack_up">Атака +</option>
+              <option value="crit_up">Критичний удар +</option>
+              <option value="speed_up">Швидкість +</option>
+              <option value="defense_up">Захист +</option>
+              <option value="lifesteal">Викрадення життя</option>
+              <option value="reflect">Відбиття</option>
+              <option value="regeneration">Регенерація</option>
+              <option value="barrier">Бар'єр</option>
+              <option value="immunity">Імунітет</option>
+              <option value="invulnerability">Непереможність</option>
+              <option value="stealth">Прихованість</option>
+              <option value="invisibility">Невидимість</option>
+              <option value="poison">Отрута</option>
+              <option value="bleed">Кровотеча</option>
+              <option value="burn">Паління</option>
+              <option value="freeze">Замороження</option>
+              <option value="slow">Повільність</option>
+              <option value="stun ">Оглушення</option>
+              <option value="blind">Сліпота</option>
+              <option value="silence ">Мовчання</option>
+              <option value="weakness ">Слабкість</option>
+              <option value="fragility ">Хрупкість</option>
+              <option value="curse ">Прокляття</option>
+              <option value="fear">Страх</option>
+              <option value="paralysis">Параліч</option>
+              <option value="hypnosis">Гіпноз</option>
+              <option value="madness">Безумство</option>
+              <option value="seal">Печать</option>
+              <option value="sleep">Сон</option>
+              <option value="drain">Висмоктування</option>
+              <option value="doom">Поразка</option>
+              <option value="lucky">Везіння</option>
+              <!-- Тут я додаю нові ефекти -->
+            </select>
+            <button class="neon-btn" id="addEffectBtn">Додати</button>
+          </div>
+
+          <!-- Видалення гравця -->
+          <button class="neon-btn danger-btn" id="deletePlayerBtn">🗑️ Видалити гравця</button>
+        </div>
+      </div>
     </div>
   </div>
 

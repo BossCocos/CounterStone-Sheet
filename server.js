@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 
 // ====== КОНФІГУРАЦІЯ ======
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;  // можна змінити на свій пароль або використовувати змінну середовища
 const MONGODB_URI = process.env.MONGODB_URI;
 
 // ====== ПІДКЛЮЧЕННЯ ДО БД ======
@@ -27,6 +27,7 @@ const playerSchema = new mongoose.Schema({
   maxHp: { type: Number, default: 10 },
   currentMana: { type: Number, default: 50 },
   maxMana: { type: Number, default: 50 },
+  effects: [{ name: String, icon: String, value: Number }],
   stats: {
     сила: { type: Number, default: 0 },
     швидкість: { type: Number, default: 0 },
@@ -172,6 +173,19 @@ function sanitizePlayer(player) {
     classAssignedLevel: player.classAssignedLevel,
     classAssignedStats: player.classAssignedStats
   };
+}
+
+function findPlayerSocket(discordName) {
+  const sockets = io.sockets.sockets;
+  for (let [id, socket] of sockets) {
+    if (socket.playerId === discordName) return socket;
+  }
+  return null;
+}
+
+async function getPlayerList() {
+  const all = await Player.find({}, 'discordName nickname level').lean();
+  return all.map(p => ({ discordName: p.discordName, nickname: p.nickname, level: p.level }));
 }
 
 // ====== EXPRESS + SOCKET.IO ======
@@ -329,6 +343,108 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Відключення:', socket.id);
+  });
+  
+  // Адмін надсилає запит на зміну імені
+  socket.on('admin:requestNameChange', async ({ discordName, newName }) => {
+    if (!socket.isAdmin) return;
+    const playerSocket = findPlayerSocket(discordName);
+    if (playerSocket) {
+      playerSocket.emit('player:changeRequest', { type: 'nickname', value: newName });
+    }
+    // Можна зберегти запит у БД тимчасово, якщо гравець офлайн
+  });
+
+  // Аналогічно для класу
+  socket.on('admin:requestClassChange', async ({ discordName, newClass }) => {
+    if (!socket.isAdmin) return;
+    const playerSocket = findPlayerSocket(discordName);
+    if (playerSocket) {
+      playerSocket.emit('player:changeRequest', { type: 'class', value: newClass });
+    }
+  });
+
+  // Відповідь гравця
+  socket.on('player:changeResponse', async ({ accept, type, value }) => {
+    if (!socket.playerId) return;
+    const player = await Player.findOne({ discordName: socket.playerId });
+    if (!player) return;
+    if (accept) {
+      if (type === 'nickname') player.nickname = value;
+      else if (type === 'class') player.className = value;
+      await player.save();
+      io.to(`player:${socket.playerId}`).emit('player:state', sanitizePlayer(player));
+      io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+    } else {
+      // Сповістити адміна про відмову (можна окрему подію)
+    }
+  });
+
+  // Додавання ефекту
+  socket.on('admin:addEffect', async ({ discordName, effect }) => {
+    if (!socket.isAdmin) return;
+    const player = await Player.findOne({ discordName });
+    if (!player) return;
+    // Перетворюємо ключ на назву та іконку (можна довідник)
+    const effectLib = {
+      attack_up: { name: 'Атака +', icon: 'attack_up' },
+      crit_up: { name: 'Критичний удар +', icon: 'crit_up' },
+      speed_up: { name: 'Швидкість +', icon: 'speed_up' },
+      defense_up: { name: 'Захист +', icon: 'defense_up' },
+      lifesteal: { name: 'Викрадення життя', icon: 'lifesteal' },
+      reflect: { name: 'Відбиття', icon: 'reflect' },
+      regeneration: { name: 'Регенерація', icon: 'regeneration' },
+      barrier: { name: 'Бар\'єр', icon: 'barrier' },
+      immunity: { name: 'Імунітет', icon: 'immunity' },
+      invulnerability: { name: 'Непереможність', icon: 'invulnerability' },
+      stealth: { name: 'Прихованість', icon: 'stealth' },
+      invisibility: { name: 'Невидимість', icon: 'invisibility' },
+      poison: { name: 'Отрута', icon: 'poison' },
+      bleed: { name: 'Кровотеча', icon: 'bleed' },
+      burn: { name: 'Паління', icon: 'burn' },
+      freeze: { name: 'Замороження', icon: 'freeze' },
+      slow: { name: 'Повільність', icon: 'slow' },
+      stun: { name: 'Оглушення', icon: 'stun' },
+      blind: { name: 'Сліпота', icon: 'blind' },
+      silence: { name: 'Мовчання', icon: 'silence' },
+      weakness: { name: 'Слабкість', icon: 'weakness' },
+      fragility: { name: 'Хрупкість', icon: 'fragility' },
+      curse: { name: 'Прокляття', icon: 'curse' },
+      fear: { name: 'Страх', icon: 'fear' },
+      paralysis: { name: 'Параліч', icon: 'paralysis' },
+      hypnosis: { name: 'Гіпноз', icon: 'hypnosis' },
+      madness: { name: 'Безумство', icon: 'madness' },
+      seal: { name: 'Печать', icon: 'seal' },
+      sleep: { name: 'Сон', icon: 'sleep' },
+      drain: { name: 'Виснаження', icon: 'drain' },
+      doom: { name: 'Поразка', icon: 'doom' },
+      lucky: { name: 'Удача', icon: 'lucky' }
+    };
+    const eff = effectLib[effect] || { name: effect, icon: 'default' };
+    player.effects.push(eff);
+    await player.save();
+    io.to(`player:${discordName}`).emit('player:state', sanitizePlayer(player));
+    io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+  });
+
+  // Видалення гравця
+  socket.on('admin:deletePlayer', async ({ discordName }, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    await Player.deleteOne({ discordName });
+    // Сповістити гравця, якщо онлайн
+    const targetSocket = findPlayerSocket(discordName);
+    if (targetSocket) {
+      targetSocket.emit('player:state', null); // або спеціальна подія про видалення
+      targetSocket.playerId = null;
+    }
+    io.to('admins').emit('admin:playerList', await getPlayerList());
+    callback({ success: true });
+  });
+
+  // Оновлення списку (викликається при потребі)
+  socket.on('admin:refreshList', async () => {
+    if (!socket.isAdmin) return;
+    socket.emit('admin:playerList', await getPlayerList());
   });
 });
 

@@ -1,68 +1,134 @@
 const socket = io();
 let playerData = null;
 
-// Обробка успішної авторизації
-socket.on('player:state', (data) => {
-  playerData = data;
-  document.getElementById('loginFormContainer').style.display = 'none';
-  document.getElementById('playerContainer').style.display = 'block';
-  renderPlayer();
-});
+// Елементи DOM
+const loginContainer = document.getElementById('loginFormContainer');
+const playerContainer = document.getElementById('playerContainer');
+const modal = document.getElementById('changeRequestModal');
+const changeMessage = document.getElementById('changeRequestMessage');
+let currentChangeRequest = null; // { type: 'name'/'class', value }
 
-// Повідомлення про помилку
-socket.on('errorMsg', (msg) => alert(msg));
-
-// Якщо гравець не авторизований, показуємо форму входу
+// Повторний вхід
 document.getElementById('loginAgainForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const discordName = document.getElementById('discordName').value.trim();
   const password = document.getElementById('password').value;
-  socket.emit('player:login', { discordName, password }, (response) => {
-    if (response.error) {
-      document.getElementById('loginError').textContent = response.error;
-    } else {
-      // чекаємо player:state
+  socket.emit('player:login', { discordName, password }, (resp) => {
+    if (resp.error) {
+      document.getElementById('loginError').textContent = resp.error;
     }
   });
 });
 
+// Отримання стану персонажа
+socket.on('player:state', (data) => {
+  playerData = data;
+  loginContainer.style.display = 'none';
+  playerContainer.style.display = 'block';
+  renderPlayer();
+});
+
+socket.on('errorMsg', (msg) => alert(msg));
+
+// Запит зміни імені/класу від адміна
+socket.on('player:changeRequest', ({ type, value }) => {
+  currentChangeRequest = { type, value };
+  if (type === 'nickname') {
+    changeMessage.textContent = `Адміністратор пропонує змінити ім'я на "${value}". Погоджуєтесь?`;
+  } else if (type === 'class') {
+    changeMessage.textContent = `Адміністратор пропонує змінити клас на "${value}". Погоджуєтесь?`;
+  }
+  modal.classList.add('active');
+});
+
+document.getElementById('acceptChange').addEventListener('click', () => {
+  if (!currentChangeRequest) return;
+  socket.emit('player:changeResponse', { accept: true, ...currentChangeRequest });
+  modal.classList.remove('active');
+});
+
+document.getElementById('declineChange').addEventListener('click', () => {
+  if (!currentChangeRequest) return;
+  socket.emit('player:changeResponse', { accept: false, ...currentChangeRequest });
+  modal.classList.remove('active');
+});
+
+// Навігація (заглушки)
+document.getElementById('navChar').addEventListener('click', () => {
+  // показати лист персонажа (вже показано)
+});
+document.getElementById('navInfo').addEventListener('click', () => {
+  alert('Інформаційна сторінка (буде реалізована)');
+});
+document.getElementById('navMap').addEventListener('click', () => {
+  alert('Карта (буде реалізована)');
+});
+document.getElementById('navLogout').addEventListener('click', () => {
+  sessionStorage.removeItem('playerId');
+  window.location.href = 'index.html';
+});
+
 function renderPlayer() {
   document.getElementById('nickname').textContent = playerData.nickname;
+  document.getElementById('characterClass').textContent = playerData.className || 'Новачок';
   document.getElementById('level').textContent = playerData.level;
   document.getElementById('freePoints').textContent = playerData.freePoints;
-  document.getElementById('characterClass').textContent = playerData.className || 'Новачок';
+
   const nextXp = xpForNextLevel(playerData.level);
   const xpPercent = Math.min((playerData.xp / nextXp) * 100, 100);
-  document.getElementById('xpBar').value = xpPercent;
-  document.getElementById('xpText').textContent = `${playerData.xp} / ${nextXp}`;
+  document.getElementById('xpBar').style.width = xpPercent + '%';
+  document.getElementById('xpNext').textContent = `${playerData.xp} / ${nextXp}`;
 
+  // HP bar – тільки смужка, максимум показуємо
   const hpPercent = (playerData.maxHp > 0) ? (playerData.hp / playerData.maxHp) * 100 : 0;
-  document.getElementById('hpBar').value = hpPercent;
-  document.getElementById('hpText').textContent = `${playerData.hp} / ${playerData.maxHp}`;
+  document.getElementById('hpBar').style.width = hpPercent + '%';
+  document.getElementById('maxHp').textContent = playerData.maxHp;
+  const hpBar = document.getElementById('hpBar');
+  if (hpPercent < 25) {
+    hpBar.classList.add('low');
+  } else {
+    hpBar.classList.remove('low');
+  }
 
+  // MP bar
   const manaPercent = (playerData.maxMana > 0) ? (playerData.currentMana / playerData.maxMana) * 100 : 0;
-  document.getElementById('manaBar').value = manaPercent;
-  document.getElementById('manaText').textContent = `${playerData.currentMana} / ${playerData.maxMana}`;
+  document.getElementById('manaBar').style.width = manaPercent + '%';
+  document.getElementById('maxMana').textContent = playerData.maxMana;
 
+  // Характеристики
   const statsList = document.getElementById('statsList');
   statsList.innerHTML = '';
   for (const [stat, value] of Object.entries(playerData.stats)) {
     const row = document.createElement('div');
     row.innerHTML = `
       <span>${stat}: ${value}</span>
-      <button class="plusBtn" data-stat="${stat}" ${playerData.freePoints <= 0 ? 'disabled' : ''}>+</button>
+      <button class="neon-btn plusBtn" data-stat="${stat}" ${playerData.freePoints <= 0 ? 'disabled' : ''}>+</button>
     `;
     statsList.appendChild(row);
   }
 
   document.querySelectorAll('.plusBtn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const stat = btn.dataset.stat;
-      socket.emit('player:spendPoint', { statName: stat, delta: 1 }, (response) => {
-        if (response.error) alert(response.error);
+      socket.emit('player:spendPoint', { statName: btn.dataset.stat, delta: 1 }, (resp) => {
+        if (resp.error) alert(resp.error);
       });
     });
   });
+
+  // Ефекти
+  const effectsContainer = document.getElementById('effectsList');
+  effectsContainer.innerHTML = '';
+  if (playerData.effects && playerData.effects.length) {
+    playerData.effects.forEach(eff => {
+      const icon = document.createElement('div');
+      icon.className = 'effect-icon';
+      icon.style.backgroundImage = `url('icons/${eff.icon}.png')`; // ви підставите свої
+      icon.dataset.tooltip = eff.name;
+      // Якщо немає зображень, покажемо текст
+      if (!eff.icon) icon.textContent = eff.name.substring(0,2);
+      effectsContainer.appendChild(icon);
+    });
+  }
 }
 
 function xpForNextLevel(level) {

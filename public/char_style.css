@@ -1,53 +1,296 @@
+/* ===== БАЗОВІ ЗМІННІ ===== */
+:root {
+  --bg-dark: #0a0a0f;
+  --neon-green: #00ff88;
+  --neon-blue: #00ccff;
+  --neon-pink: #ff00aa;
+  --neon-gold: #ffaa00;
+  --hp-full: #00ff88;
+  --hp-low: #ff3333;
+  --mp-color: #00ccff;
+  --panel-bg: rgba(10, 10, 20, 0.95);
+  --border-glow: 0 0 8px rgba(0, 255, 136, 0.4);
+}
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #111827;
-  color: #f9fafb;
-}
-
-.app-shell {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
-.nav-links {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.nav-links a,
-button {
-  background: #2563eb;
-  color: white;
-  padding: 0.7rem 1rem;
-  border: none;
-  border-radius: 6px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.panel {
-  display: flex;
-  gap: 0.5rem;
-  margin: 1rem 0;
-  flex-wrap: wrap;
-}
-
-input {
-  flex: 1;
-  min-width: 180px;
-  padding: 0.7rem;
-  border-radius: 6px;
-  border: 1px solid #4b5563;
-}
-
-ul {
-  list-style: none;
   padding: 0;
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at 30% 30%, #1a1a2e, #0a0a0f);
+  color: #d0d0ff;
+  display: flex;
+  min-height: 100vh;
 }
 
-li {
-  margin-bottom: 0.5rem;
+/* ===== БІЧНА НАВІГАЦІЯ ===== */
+.side-nav {
+  width: 70px;
+  background: var(--panel-bg);
+  border-right: 1px solid rgba(0, 255, 136, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  box-shadow: 2px 0 15px rgba(0, 255, 136, 0.1);
+  z-index: 10;
+}
+.side-nav button {
+  background: none;
+  border: none;
+  color: #5c7a8a;
+  cursor: pointer;
+  width: 50px;
+  height: 50px;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  transition: all 0.2s;
+  font-size: 20px;
+  position: relative;
+}
+.side-nav button:hover {
+  color: var(--neon-green);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+  background: rgba(0, 255, 136, 0.1);
+}
+.side-nav button.active {
+  color: var(--neon-green);
+  background: rgba(0, 255, 136, 0.15);
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+}
+.side-nav .logout-btn {
+  margin-top: auto;
+  margin-bottom: 20px;
+  color: #ff5577;
+}
+.side-nav .logout-btn:hover {
+  color: #ff3355;
+  box-shadow: 0 0 12px rgba(255, 50, 50, 0.6);
+}
+
+/* Підказки для іконок */
+.side-nav button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 70px;
+  background: #000;
+  color: var(--neon-green);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: 0.2s;
+}
+.side-nav button:hover::after {
+  opacity: 1;
+}
+
+/* Іконки – ви заміните на зображення через background-image або <img> */
+.icon-char::before { content: "⚔️"; font-size: 22px; }
+.icon-info::before { content: "ℹ️"; font-size: 22px; }
+.icon-map::before  { content: "🗺️"; font-size: 22px; }
+.icon-logout::before { content: "🚪"; font-size: 22px; }
+
+/* ===== ОСНОВНИЙ КОНТЕНТ ===== */
+.main-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+/* ===== КАРТКА ПЕРСОНАЖА (ГРАВЕЦЬ) ===== */
+.character-card {
+  max-width: 500px;
+  margin: 0 auto;
+  background: var(--panel-bg);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.15), inset 0 0 20px rgba(0,0,0,0.5);
+  position: relative;
+}
+.character-card::before {
+  content: '';
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  background: linear-gradient(45deg, var(--neon-green), var(--neon-blue), var(--neon-pink));
+  border-radius: 22px;
+  z-index: -1;
+  opacity: 0.5;
+  filter: blur(10px);
+}
+
+/* Ім'я, клас */
+.char-name {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--neon-green);
+  text-shadow: 0 0 10px rgba(0,255,136,0.6);
+  margin-bottom: 5px;
+}
+.char-class {
+  font-size: 18px;
+  color: var(--neon-blue);
+  text-shadow: 0 0 8px rgba(0,204,255,0.5);
+  margin-bottom: 25px;
+}
+
+/* ===== HP BAR (похилий паралелограм) ===== */
+.bar-container {
+  margin-bottom: 15px;
+}
+.bar-label {
+  font-size: 14px;
+  color: #8899aa;
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+.bar-track {
+  height: 18px;
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.1);
+  transform: skewX(-20deg);
+  overflow: hidden;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+}
+.hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--hp-full), #00ffaa);
+  box-shadow: 0 0 12px rgba(0,255,136,0.8);
+  transition: width 0.5s ease;
+}
+.hp-fill.low {
+  background: linear-gradient(90deg, #ff4444, #ff6666);
+  box-shadow: 0 0 15px rgba(255,0,0,0.7);
+}
+
+.mp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mp-color), #66ddff);
+  box-shadow: 0 0 12px rgba(0,204,255,0.8);
+  transition: width 0.5s ease;
+}
+
+/* ===== ЕФЕКТИ (іконки) ===== */
+.effects-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+.effect-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  position: relative;
+  border-radius: 8px;
+  transition: 0.2s;
+  /* Ви додасте зображення через background-image */
+}
+.effect-icon:hover {
+  border-color: var(--neon-gold);
+  box-shadow: 0 0 12px rgba(255,170,0,0.5);
+}
+.effect-icon::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 40px;
+  background: #000;
+  color: var(--neon-gold);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: 0.2s;
+}
+.effect-icon:hover::after {
+  opacity: 1;
+}
+
+/* ===== АДМІН ПАНЕЛЬ (додаткові класи) ===== */
+.admin-panel {
+  display: flex;
+  gap: 20px;
+}
+.player-list-panel {
+  width: 250px;
+  background: var(--panel-bg);
+  border: 1px solid rgba(0,255,136,0.2);
+  border-radius: 15px;
+  padding: 20px;
+}
+.player-details {
+  flex: 1;
+  background: var(--panel-bg);
+  border: 1px solid rgba(0,255,136,0.2);
+  border-radius: 15px;
+  padding: 20px;
+}
+
+/* Чіткі числа для адміна */
+.stat-value {
+  font-size: 16px;
+  color: #fff;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+/* Кнопки в стилі неону */
+.neon-btn {
+  background: none;
+  border: 1px solid var(--neon-green);
+  color: var(--neon-green);
+  padding: 6px 15px;
+  margin: 3px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.2s;
+  font-size: 14px;
+}
+.neon-btn:hover {
+  background: var(--neon-green);
+  color: #000;
+  box-shadow: 0 0 15px rgba(0,255,136,0.6);
+}
+.danger-btn {
+  border-color: #ff3355;
+  color: #ff3355;
+}
+.danger-btn:hover {
+  background: #ff3355;
+  color: #fff;
+  box-shadow: 0 0 15px rgba(255,51,85,0.6);
+}
+
+/* ===== МОДАЛЬНЕ ВІКНО ДЛЯ ГРАВЦЯ (запит зміни) ===== */
+.modal {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+.modal.active {
+  display: flex;
+}
+.modal-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--neon-blue);
+  padding: 25px;
+  border-radius: 15px;
+  text-align: center;
 }
