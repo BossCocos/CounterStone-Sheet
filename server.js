@@ -27,7 +27,7 @@ const playerSchema = new mongoose.Schema({
   maxHp: { type: Number, default: 10 },
   currentMana: { type: Number, default: 50 },
   maxMana: { type: Number, default: 50 },
-  effects: [{ name: String, icon: String, value: Number }],
+  effects: [{ name: String, icon: String }],
   stats: {
     сила: { type: Number, default: 0 },
     швидкість: { type: Number, default: 0 },
@@ -167,6 +167,7 @@ function sanitizePlayer(player) {
     maxHp: player.maxHp,
     currentMana: player.currentMana,
     maxMana: player.maxMana,
+    effects: player.effects,
     stats: player.stats,
     statHistory: player.statHistory,
     className: player.className,
@@ -325,8 +326,11 @@ io.on('connection', (socket) => {
           }
           break;
         case 'freePoints':
-          player.freePoints = Math.max(0, value);
-          assignInitialClass(player);
+          if (delta !== undefined) {
+              player.freePoints = Math.max(0, player.freePoints + delta);
+          } else if (value !== undefined) {
+              player.freePoints = Math.max(0, value);
+          }
           break;
       }
 
@@ -380,52 +384,70 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Додавання ефекту
-  socket.on('admin:addEffect', async ({ discordName, effect }) => {
+// Додавання ефекту
+socket.on('admin:addEffect', async ({ discordName, effect }) => {
     if (!socket.isAdmin) return;
-    const player = await Player.findOne({ discordName });
-    if (!player) return;
-    // Перетворюємо ключ на назву та іконку (можна довідник)
-    const effectLib = {
-      attack_up: { name: 'Атака +', icon: 'attack_up' },
-      crit_up: { name: 'Критичний удар +', icon: 'crit_up' },
-      speed_up: { name: 'Швидкість +', icon: 'speed_up' },
-      defense_up: { name: 'Захист +', icon: 'defense_up' },
-      lifesteal: { name: 'Викрадення життя', icon: 'lifesteal' },
-      reflect: { name: 'Відбиття', icon: 'reflect' },
-      regeneration: { name: 'Регенерація', icon: 'regeneration' },
-      barrier: { name: 'Бар\'єр', icon: 'barrier' },
-      immunity: { name: 'Імунітет', icon: 'immunity' },
-      invulnerability: { name: 'Непереможність', icon: 'invulnerability' },
-      stealth: { name: 'Прихованість', icon: 'stealth' },
-      invisibility: { name: 'Невидимість', icon: 'invisibility' },
-      poison: { name: 'Отрута', icon: 'poison' },
-      bleed: { name: 'Кровотеча', icon: 'bleed' },
-      burn: { name: 'Паління', icon: 'burn' },
-      freeze: { name: 'Замороження', icon: 'freeze' },
-      slow: { name: 'Повільність', icon: 'slow' },
-      stun: { name: 'Оглушення', icon: 'stun' },
-      blind: { name: 'Сліпота', icon: 'blind' },
-      silence: { name: 'Мовчання', icon: 'silence' },
-      weakness: { name: 'Слабкість', icon: 'weakness' },
-      fragility: { name: 'Хрупкість', icon: 'fragility' },
-      curse: { name: 'Прокляття', icon: 'curse' },
-      fear: { name: 'Страх', icon: 'fear' },
-      paralysis: { name: 'Параліч', icon: 'paralysis' },
-      hypnosis: { name: 'Гіпноз', icon: 'hypnosis' },
-      madness: { name: 'Безумство', icon: 'madness' },
-      seal: { name: 'Печать', icon: 'seal' },
-      sleep: { name: 'Сон', icon: 'sleep' },
-      drain: { name: 'Виснаження', icon: 'drain' },
-      doom: { name: 'Поразка', icon: 'doom' },
-      lucky: { name: 'Удача', icon: 'lucky' }
-    };
-    const eff = effectLib[effect] || { name: effect, icon: 'default' };
-    player.effects.push(eff);
-    await player.save();
-    io.to(`player:${discordName}`).emit('player:state', sanitizePlayer(player));
-    io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
-  });
+    try {
+        const player = await Player.findOne({ discordName });
+        if (!player) return;
+        const effectLib = {
+          attack_up: { name: 'Атака +', icon: 'attack_up' },
+          crit_up: { name: 'Критичний удар +', icon: 'crit_up' },
+          speed_up: { name: 'Швидкість +', icon: 'speed_up' },
+          defense_up: { name: 'Захист +', icon: 'defense_up' },
+          lifesteal: { name: 'Викрадення життя', icon: 'lifesteal' },
+          reflect: { name: 'Відбиття', icon: 'reflect' },
+          regeneration: { name: 'Регенерація', icon: 'regeneration' },
+          barrier: { name: 'Бар\'єр', icon: 'barrier' },
+          immunity: { name: 'Імунітет', icon: 'immunity' },
+          invulnerability: { name: 'Непереможність', icon: 'invulnerability' },
+          stealth: { name: 'Прихованість', icon: 'stealth' },
+          invisibility: { name: 'Невидимість', icon: 'invisibility' },
+          poison: { name: 'Отрута', icon: 'poison' },
+          bleed: { name: 'Кровотеча', icon: 'bleed' },
+          burn: { name: 'Паління', icon: 'burn' },
+          freeze: { name: 'Замороження', icon: 'freeze' },
+          slow: { name: 'Повільність', icon: 'slow' },
+          stun: { name: 'Оглушення', icon: 'stun' },
+          blind: { name: 'Сліпота', icon: 'blind' },
+          silence: { name: 'Мовчання', icon: 'silence' },
+          weakness: { name: 'Слабкість', icon: 'weakness' },
+          fragility: { name: 'Хрупкість', icon: 'fragility' },
+          curse: { name: 'Прокляття', icon: 'curse' },
+          fear: { name: 'Страх', icon: 'fear' },
+          paralysis: { name: 'Параліч', icon: 'paralysis' },
+          hypnosis: { name: 'Гіпноз', icon: 'hypnosis' },
+          madness: { name: 'Безумство', icon: 'madness' },
+          seal: { name: 'Печать', icon: 'seal' },
+          sleep: { name: 'Сон', icon: 'sleep' },
+          drain: { name: 'Виснаження', icon: 'drain' },
+          doom: { name: 'Поразка', icon: 'doom' },
+          lucky: { name: 'Удача', icon: 'lucky' }
+        };
+        const eff = effectLib[effect] || { name: effect, icon: 'default' };
+        player.effects.push(eff);
+        await player.save();
+        io.to(`player:${discordName}`).emit('player:state', sanitizePlayer(player));
+        io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+// Видалення ефекту за індексом
+socket.on('admin:removeEffect', async ({ discordName, effectIndex }) => {
+    if (!socket.isAdmin) return;
+    try {
+        const player = await Player.findOne({ discordName });
+        if (!player || !player.effects[effectIndex]) return;
+        player.effects.splice(effectIndex, 1);
+        await player.save();
+        io.to(`player:${discordName}`).emit('player:state', sanitizePlayer(player));
+        io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+    } catch (err) {
+        console.error(err);
+    }
+});
 
   // Видалення гравця
   socket.on('admin:deletePlayer', async ({ discordName }, callback) => {

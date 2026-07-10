@@ -37,25 +37,30 @@
           <p>Рівень: <span id="selLevel"></span></p>
 
           <!-- Чіткі значення для адміна -->
+          <!-- HP -->
           <div>
             <span>HP: </span><span class="stat-value" id="selHp"></span>
             <span> / </span><span class="stat-value" id="selMaxHp"></span>
-            <button class="neon-btn" id="healBtn">+1</button>
-            <button class="neon-btn danger-btn" id="damageBtn">-1</button>
+            <input type="number" id="hpDeltaInput" value="1" style="width:60px;">
+            <button class="neon-btn" id="healBtn">+</button>
+            <button class="neon-btn danger-btn" id="damageBtn">-</button>
           </div>
+
+          <!-- MP -->
           <div>
             <span>MP: </span><span class="stat-value" id="selMana"></span>
             <span> / </span><span class="stat-value" id="selMaxMana"></span>
-            <button class="neon-btn" id="manaPlusBtn">+1</button>
-            <button class="neon-btn danger-btn" id="manaMinusBtn">-1</button>
+            <input type="number" id="manaDeltaInput" value="1" style="width:60px;">
+            <button class="neon-btn" id="manaPlusBtn">+</button>
+            <button class="neon-btn danger-btn" id="manaMinusBtn">-</button>
           </div>
-          <div>
-            <span>XP: </span><span class="stat-value" id="selXp"></span>
-            <span> / </span><span class="stat-value" id="selNextXp"></span>
-            <input type="number" id="xpDeltaInput" value="10" style="width:70px;">
-            <button class="neon-btn" id="addXpBtn">+</button>
-            <button class="neon-btn danger-btn" id="subtractXpBtn">-</button>
+
+          <!-- Характеристики -->
+          <div style="margin-top:10px;">
+            <h4>Характеристики</h4>
+            <div id="adminStats" class="stats-grid"></div>
           </div>
+
           <div>
             <span>Вільні очки: </span><span class="stat-value" id="selFreePoints"></span>
             <button class="neon-btn" id="addPointBtn">+1</button>
@@ -73,7 +78,7 @@
           </div>
 
           <!-- Управління ефектами -->
-          <div style="margin-top:15px;">
+          <div style="margin-top:10px;">
             <h4>Ефекти</h4>
             <div id="currentEffects"></div>
             <select id="effectSelect">

@@ -294,3 +294,26 @@ body {
   border-radius: 15px;
   text-align: center;
 }
+.bar-track.xp-bar {
+  height: 10px;               /* тонший */
+}
+.xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffcc00, #ffaa00);
+  box-shadow: 0 0 8px rgba(255,170,0,0.6);
+  transition: width 0.5s ease;
+}
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stat-name {
+  width: 100px;
+  text-align: right;
+}

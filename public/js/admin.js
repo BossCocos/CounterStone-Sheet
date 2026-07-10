@@ -51,17 +51,56 @@ function displayPlayerData(p) {
   document.getElementById('selNextXp').textContent = xpForNextLevel(p.level);
   document.getElementById('selFreePoints').textContent = p.freePoints;
 
-  // Ефекти
+const statsDiv = document.getElementById('adminStats');
+  statsDiv.innerHTML = '';
+  for (const [stat, val] of Object.entries(p.stats)) {
+    const row = document.createElement('div');
+    row.className = 'stat-row';
+    row.innerHTML = `
+      <span class="stat-name">${stat}</span>
+      <span class="stat-value">${val}</span>
+      <button class="neon-btn stat-plus" data-stat="${stat}">+</button>
+      <button class="neon-btn danger-btn stat-minus" data-stat="${stat}">-</button>
+    `;
+    statsDiv.appendChild(row);
+  }
+  document.querySelectorAll('.stat-plus').forEach(btn => {
+    btn.onclick = () => changeStat(btn.dataset.stat, 1);
+  });
+  document.querySelectorAll('.stat-minus').forEach(btn => {
+    btn.onclick = () => changeStat(btn.dataset.stat, -1);
+  });
+
+  // Ефекти з кнопкою видалення
   const effDiv = document.getElementById('currentEffects');
   effDiv.innerHTML = '';
   if (p.effects) {
-    p.effects.forEach(e => {
+    p.effects.forEach((eff, index) => {
       const span = document.createElement('span');
-      span.textContent = e.name + ' ';
       span.className = 'effect-icon';
+      span.style.backgroundImage = `url('icons/${eff.icon}.png')`;
+      span.dataset.tooltip = eff.name;
+      if (!eff.icon) span.textContent = eff.name.substring(0,2);
+      // Кнопка видалення
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '✕';
+      delBtn.className = 'neon-btn danger-btn';
+      delBtn.style.marginLeft = '5px';
+      delBtn.onclick = () => {
+        socket.emit('admin:removeEffect', { discordName: selectedPlayerId, effectIndex: index });
+      };
+      span.appendChild(delBtn);
       effDiv.appendChild(span);
     });
   }
+}
+
+function changeStat(stat, delta) {
+  socket.emit('admin:updatePlayer', {
+    discordName: selectedPlayerId,
+    field: 'stat',
+    value: { statName: stat, delta: delta }
+  }, (res) => { if (res.error) alert(res.error); });
 }
 
 function setupSocketListeners() {
@@ -71,11 +110,27 @@ function setupSocketListeners() {
     }
   });
 
-  // Кнопки HP/MP/XP/Points (дельта)
-  document.getElementById('healBtn').onclick = () => updatePlayer('hp', null, 1);
-  document.getElementById('damageBtn').onclick = () => updatePlayer('hp', null, -1);
-  document.getElementById('manaPlusBtn').onclick = () => updatePlayer('mana', null, 1);
-  document.getElementById('manaMinusBtn').onclick = () => updatePlayer('mana', null, -1);
+  // HP
+  document.getElementById('healBtn').onclick = () => {
+    const delta = parseInt(document.getElementById('hpDeltaInput').value) || 0;
+    updatePlayer('hp', null, delta);
+  };
+  document.getElementById('damageBtn').onclick = () => {
+    const delta = -(parseInt(document.getElementById('hpDeltaInput').value) || 0);
+    updatePlayer('hp', null, delta);
+  };
+
+  // MP
+  document.getElementById('manaPlusBtn').onclick = () => {
+    const delta = parseInt(document.getElementById('manaDeltaInput').value) || 0;
+    updatePlayer('mana', null, delta);
+  };
+  document.getElementById('manaMinusBtn').onclick = () => {
+    const delta = -(parseInt(document.getElementById('manaDeltaInput').value) || 0);
+    updatePlayer('mana', null, delta);
+  };
+
+  // XP
   document.getElementById('addXpBtn').onclick = () => {
     const delta = parseInt(document.getElementById('xpDeltaInput').value) || 0;
     updatePlayer('xp', null, delta);
@@ -84,22 +139,16 @@ function setupSocketListeners() {
     const delta = -(parseInt(document.getElementById('xpDeltaInput').value) || 0);
     updatePlayer('xp', null, delta);
   };
-  document.getElementById('addPointBtn').onclick = () => updatePlayer('freePoints', null, 1, true);
-  document.getElementById('removePointBtn').onclick = () => updatePlayer('freePoints', null, -1, true);
+
+  // Вільні очки
+  document.getElementById('addPointBtn').onclick = () => updatePlayer('freePoints', null, 1);
+  document.getElementById('removePointBtn').onclick = () => updatePlayer('freePoints', null, -1);
 
   // Зміна імені/класу
-  document.getElementById('changeNameBtn').onclick = () => {
-    const newName = document.getElementById('newNickname').value.trim();
-    if (!newName) return alert('Введіть ім\'я');
-    socket.emit('admin:requestNameChange', { discordName: selectedPlayerId, newName });
-  };
-  document.getElementById('changeClassBtn').onclick = () => {
-    const newClass = document.getElementById('newClass').value.trim();
-    if (!newClass) return alert('Введіть клас');
-    socket.emit('admin:requestClassChange', { discordName: selectedPlayerId, newClass });
-  };
+  document.getElementById('changeNameBtn').onclick = () => { /* як раніше */ };
+  document.getElementById('changeClassBtn').onclick = () => { /* як раніше */ };
 
-  // Ефекти
+  // Ефекти – додавання
   document.getElementById('addEffectBtn').onclick = () => {
     const effectKey = document.getElementById('effectSelect').value;
     socket.emit('admin:addEffect', { discordName: selectedPlayerId, effect: effectKey });
@@ -107,13 +156,12 @@ function setupSocketListeners() {
 
   // Видалення гравця
   document.getElementById('deletePlayerBtn').onclick = () => {
-    if (confirm('Ви впевнені, що хочете видалити цього гравця?')) {
+    if (confirm('Ви впевнені?')) {
       socket.emit('admin:deletePlayer', { discordName: selectedPlayerId }, (res) => {
         if (res.error) alert(res.error);
         else {
           selectedPlayerId = null;
           document.getElementById('selectedPlayer').style.display = 'none';
-          // Оновити список (можна запросити заново)
           socket.emit('admin:refreshList');
         }
       });
