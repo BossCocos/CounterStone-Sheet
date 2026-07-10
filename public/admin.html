@@ -6,7 +6,6 @@
   <link rel="stylesheet" href="char_style.css">
 </head>
 <body>
-  <!-- БІЧНА НАВІГАЦІЯ (така сама, як у гравця) -->
   <nav class="side-nav">
     <button class="icon-char active" data-tooltip="Character" id="navChar">⚔️</button>
     <button class="icon-info" data-tooltip="Info" id="navInfo">ℹ️</button>
@@ -24,19 +23,25 @@
 
     <div id="adminContent" style="display:none;">
       <div class="admin-panel">
-        <!-- Список гравців -->
         <div class="player-list-panel">
           <h3 style="color: var(--neon-green);">Гравці</h3>
           <div id="playerList"></div>
         </div>
 
-        <!-- Деталі гравця -->
         <div class="player-details" id="selectedPlayer" style="display:none;">
           <h2 style="color: var(--neon-green);" id="selNickname"></h2>
           <p>Клас: <span id="selClass"></span></p>
           <p>Рівень: <span id="selLevel"></span></p>
 
-          <!-- Чіткі значення для адміна -->
+          <!-- XP -->
+          <div>
+            <span>XP: </span><span class="stat-value" id="selXp"></span>
+            <span> / </span><span class="stat-value" id="selNextXp"></span>
+            <input type="number" id="xpDeltaInput" value="10" style="width:70px;">
+            <button class="neon-btn" id="addXpBtn">+</button>
+            <button class="neon-btn danger-btn" id="subtractXpBtn">-</button>
+          </div>
+
           <!-- HP -->
           <div>
             <span>HP: </span><span class="stat-value" id="selHp"></span>
@@ -55,16 +60,17 @@
             <button class="neon-btn danger-btn" id="manaMinusBtn">-</button>
           </div>
 
-          <!-- Характеристики -->
-          <div style="margin-top:10px;">
-            <h4>Характеристики</h4>
-            <div id="adminStats" class="stats-grid"></div>
-          </div>
-
+          <!-- Вільні очки -->
           <div>
             <span>Вільні очки: </span><span class="stat-value" id="selFreePoints"></span>
             <button class="neon-btn" id="addPointBtn">+1</button>
             <button class="neon-btn danger-btn" id="removePointBtn">-1</button>
+          </div>
+
+          <!-- Характеристики -->
+          <div style="margin-top:10px;">
+            <h4>Характеристики</h4>
+            <div id="adminStats" class="stats-grid"></div>
           </div>
 
           <!-- Зміна імені / класу -->
@@ -77,45 +83,45 @@
             <button class="neon-btn" id="changeClassBtn">Змінити клас</button>
           </div>
 
-          <!-- Управління ефектами -->
+          <!-- Ефекти -->
           <div style="margin-top:10px;">
             <h4>Ефекти</h4>
             <div id="currentEffects"></div>
-            <select id="effectSelect">
-              <option value="attack_up">Атака +</option>
-              <option value="crit_up">Критичний удар +</option>
-              <option value="speed_up">Швидкість +</option>
-              <option value="defense_up">Захист +</option>
-              <option value="lifesteal">Викрадення життя</option>
-              <option value="reflect">Відбиття</option>
-              <option value="regeneration">Регенерація</option>
-              <option value="barrier">Бар'єр</option>
-              <option value="immunity">Імунітет</option>
-              <option value="invulnerability">Непереможність</option>
-              <option value="stealth">Прихованість</option>
-              <option value="invisibility">Невидимість</option>
-              <option value="poison">Отрута</option>
-              <option value="bleed">Кровотеча</option>
-              <option value="burn">Паління</option>
-              <option value="freeze">Замороження</option>
-              <option value="slow">Повільність</option>
-              <option value="stun ">Оглушення</option>
-              <option value="blind">Сліпота</option>
-              <option value="silence ">Мовчання</option>
-              <option value="weakness ">Слабкість</option>
-              <option value="fragility ">Хрупкість</option>
-              <option value="curse ">Прокляття</option>
-              <option value="fear">Страх</option>
-              <option value="paralysis">Параліч</option>
-              <option value="hypnosis">Гіпноз</option>
-              <option value="madness">Безумство</option>
-              <option value="seal">Печать</option>
-              <option value="sleep">Сон</option>
-              <option value="drain">Висмоктування</option>
-              <option value="doom">Поразка</option>
-              <option value="lucky">Везіння</option>
-              <!-- Тут я додаю нові ефекти -->
-            </select>
+              <select id="effectSelect">
+                <option value="attack_up">Атака +</option>
+                <option value="crit_up">Критичний удар +</option>
+                <option value="speed_up">Швидкість +</option>
+                <option value="defense_up">Захист +</option>
+                <option value="lifesteal">Викрадення життя</option>
+                <option value="reflect">Відбиття</option>
+                <option value="regeneration">Регенерація</option>
+                <option value="barrier">Бар'єр</option>
+                <option value="immunity">Імунітет</option>
+                <option value="invulnerability">Непереможність</option>
+                <option value="stealth">Прихованість</option>
+                <option value="invisibility">Невидимість</option>
+                <option value="poison">Отрута</option>
+                <option value="bleed">Кровотеча</option>
+                <option value="burn">Паління</option>
+                <option value="freeze">Замороження</option>
+                <option value="slow">Повільність</option>
+                <option value="stun ">Оглушення</option>
+                <option value="blind">Сліпота</option>
+                <option value="silence ">Мовчання</option>
+                <option value="weakness ">Слабкість</option>
+                <option value="fragility ">Хрупкість</option>
+                <option value="curse ">Прокляття</option>
+                <option value="fear">Страх</option>
+                <option value="paralysis">Параліч</option>
+                <option value="hypnosis">Гіпноз</option>
+                <option value="madness">Безумство</option>
+                <option value="seal">Печать</option>
+                <option value="sleep">Сон</option>
+                <option value="drain">Висмоктування</option>
+                <option value="doom">Поразка</option>
+                <option value="lucky">Везіння</option>
+                <!-- Тут я додаю нові ефекти -->
+              </select>
             <button class="neon-btn" id="addEffectBtn">Додати</button>
           </div>
 

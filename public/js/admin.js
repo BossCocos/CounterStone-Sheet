@@ -40,8 +40,8 @@ function selectPlayer(discordName) {
 }
 
 function displayPlayerData(p) {
-  document.getElementById('selNickname').textContent = p.nickname;
-  document.getElementById('selClass').textContent = p.className;
+  document.getElementById('selNickname').textContent = p.nickname || '—';
+  document.getElementById('selClass').textContent = p.className || 'Новачок';
   document.getElementById('selLevel').textContent = p.level;
   document.getElementById('selHp').textContent = p.hp;
   document.getElementById('selMaxHp').textContent = p.maxHp;
@@ -51,9 +51,10 @@ function displayPlayerData(p) {
   document.getElementById('selNextXp').textContent = xpForNextLevel(p.level);
   document.getElementById('selFreePoints').textContent = p.freePoints;
 
-const statsDiv = document.getElementById('adminStats');
+  // Характеристики
+  const statsDiv = document.getElementById('adminStats');
   statsDiv.innerHTML = '';
-  for (const [stat, val] of Object.entries(p.stats)) {
+  for (const [stat, val] of Object.entries(p.stats || {})) {
     const row = document.createElement('div');
     row.className = 'stat-row';
     row.innerHTML = `
@@ -71,17 +72,18 @@ const statsDiv = document.getElementById('adminStats');
     btn.onclick = () => changeStat(btn.dataset.stat, -1);
   });
 
-  // Ефекти з кнопкою видалення
+  // Ефекти
   const effDiv = document.getElementById('currentEffects');
   effDiv.innerHTML = '';
-  if (p.effects) {
+  if (p.effects && p.effects.length) {
     p.effects.forEach((eff, index) => {
-      const span = document.createElement('span');
-      span.className = 'effect-icon';
-      span.style.backgroundImage = `url('icons/${eff.icon}.png')`;
-      span.dataset.tooltip = eff.name;
-      if (!eff.icon) span.textContent = eff.name.substring(0,2);
-      // Кнопка видалення
+      const wrapper = document.createElement('span');
+      wrapper.className = 'effect-wrapper';
+      const icon = document.createElement('span');
+      icon.className = 'effect-icon';
+      icon.style.backgroundImage = `url('icons/${eff.icon}.png')`;
+      icon.dataset.tooltip = eff.name;
+      if (!eff.icon) icon.textContent = eff.name.substring(0, 2);
       const delBtn = document.createElement('button');
       delBtn.textContent = '✕';
       delBtn.className = 'neon-btn danger-btn';
@@ -89,8 +91,9 @@ const statsDiv = document.getElementById('adminStats');
       delBtn.onclick = () => {
         socket.emit('admin:removeEffect', { discordName: selectedPlayerId, effectIndex: index });
       };
-      span.appendChild(delBtn);
-      effDiv.appendChild(span);
+      wrapper.appendChild(icon);
+      wrapper.appendChild(delBtn);
+      effDiv.appendChild(wrapper);
     });
   }
 }
@@ -111,42 +114,32 @@ function setupSocketListeners() {
   });
 
   // HP
-  document.getElementById('healBtn').onclick = () => {
-    const delta = parseInt(document.getElementById('hpDeltaInput').value) || 0;
-    updatePlayer('hp', null, delta);
-  };
-  document.getElementById('damageBtn').onclick = () => {
-    const delta = -(parseInt(document.getElementById('hpDeltaInput').value) || 0);
-    updatePlayer('hp', null, delta);
-  };
+  document.getElementById('healBtn').onclick = () => updateWithDelta('hp', 'hpDeltaInput', 1);
+  document.getElementById('damageBtn').onclick = () => updateWithDelta('hp', 'hpDeltaInput', -1);
 
   // MP
-  document.getElementById('manaPlusBtn').onclick = () => {
-    const delta = parseInt(document.getElementById('manaDeltaInput').value) || 0;
-    updatePlayer('mana', null, delta);
-  };
-  document.getElementById('manaMinusBtn').onclick = () => {
-    const delta = -(parseInt(document.getElementById('manaDeltaInput').value) || 0);
-    updatePlayer('mana', null, delta);
-  };
+  document.getElementById('manaPlusBtn').onclick = () => updateWithDelta('mana', 'manaDeltaInput', 1);
+  document.getElementById('manaMinusBtn').onclick = () => updateWithDelta('mana', 'manaDeltaInput', -1);
 
   // XP
-  document.getElementById('addXpBtn').onclick = () => {
-    const delta = parseInt(document.getElementById('xpDeltaInput').value) || 0;
-    updatePlayer('xp', null, delta);
-  };
-  document.getElementById('subtractXpBtn').onclick = () => {
-    const delta = -(parseInt(document.getElementById('xpDeltaInput').value) || 0);
-    updatePlayer('xp', null, delta);
-  };
+  document.getElementById('addXpBtn').onclick = () => updateWithDelta('xp', 'xpDeltaInput', 1);
+  document.getElementById('subtractXpBtn').onclick = () => updateWithDelta('xp', 'xpDeltaInput', -1);
 
   // Вільні очки
   document.getElementById('addPointBtn').onclick = () => updatePlayer('freePoints', null, 1);
   document.getElementById('removePointBtn').onclick = () => updatePlayer('freePoints', null, -1);
 
   // Зміна імені/класу
-  document.getElementById('changeNameBtn').onclick = () => { /* як раніше */ };
-  document.getElementById('changeClassBtn').onclick = () => { /* як раніше */ };
+  document.getElementById('changeNameBtn').onclick = () => {
+    const newName = document.getElementById('newNickname').value.trim();
+    if (!newName) return alert('Введіть ім\'я');
+    socket.emit('admin:requestNameChange', { discordName: selectedPlayerId, newName });
+  };
+  document.getElementById('changeClassBtn').onclick = () => {
+    const newClass = document.getElementById('newClass').value.trim();
+    if (!newClass) return alert('Введіть клас');
+    socket.emit('admin:requestClassChange', { discordName: selectedPlayerId, newClass });
+  };
 
   // Ефекти – додавання
   document.getElementById('addEffectBtn').onclick = () => {
@@ -169,7 +162,14 @@ function setupSocketListeners() {
   };
 }
 
-function updatePlayer(field, value, delta, isPoints = false) {
+function updateWithDelta(field, inputId, sign) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const delta = (parseInt(input.value) || 0) * sign;
+  updatePlayer(field, null, delta);
+}
+
+function updatePlayer(field, value, delta) {
   if (!selectedPlayerId) return;
   const payload = { discordName: selectedPlayerId, field };
   if (delta !== undefined && delta !== null) payload.delta = delta;
@@ -183,13 +183,12 @@ function xpForNextLevel(level) {
   return Math.floor(100 + (level * 150) + Math.pow(level, 2) * 50);
 }
 
-// Навігація адміна
-document.getElementById('navChar').addEventListener('click', () => { /* активна панель */ });
+// Навігація
+document.getElementById('navChar').addEventListener('click', () => {});
 document.getElementById('navInfo').addEventListener('click', () => alert('Інфо'));
 document.getElementById('navMap').addEventListener('click', () => alert('Мапа'));
 document.getElementById('navLogout').addEventListener('click', () => {
   window.location.href = 'index.html';
 });
 
-// Оновлення списку гравців при зміні
 socket.on('admin:playerList', renderPlayerList);

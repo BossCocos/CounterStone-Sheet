@@ -331,6 +331,7 @@ io.on('connection', (socket) => {
           } else if (value !== undefined) {
               player.freePoints = Math.max(0, value);
           }
+          assignInitialClass(player);
           break;
       }
 
