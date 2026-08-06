@@ -126,10 +126,20 @@ body::before {
   transition: transform 0.15s;
 }
 .icon-char::before { background-image: url('icons/Menu/Man.png'); }
-.icon-info::before { background-image: url('icons/Menu/Help%20%26%20Unknown.png'); }
+.icon-info::before { background-image: url('icons/Menu/Guild.png'); }
 .icon-map::before  { background-image: url('icons/Menu/Location.png'); }
+.icon-skills::before  { background-image: url('icons/Menu/Skills.png'); }
+.icon-tavern::before  { background-image: url('icons/Menu/Help%20%26%20Unknown.png'); }
+.icon-chat::before  { background-image: url('icons/Menu/Message.png'); }
 .icon-logout::before { background-image: url('icons/Menu/Logout.png'); }
 .side-nav button:hover::before { filter: brightness(1.2); }
+.icon-char::hover { background-image: url('icons/Menu/Man_on.png'); }
+.icon-info:hover::after { background-image: url('icons/Menu/Guild_on.png'); }
+.icon-map:hover::after  { background-image: url('icons/Menu/Location_on.png'); }
+.icon-skills:hover::after  { background-image: url('icons/Menu/Skills_on.png'); }
+.icon-tavern:hover::after  { background-image: url('icons/Menu/Help%20%26%20Unknown_on.png'); }
+.icon-chat:hover::after  { background-image: url('icons/Menu/Message_on.png'); }
+.icon-logout:hover::after { background-image: url('icons/Menu/Logout_on.png'); }
 
 /* ===== ОСНОВНИЙ КОНТЕНТ ===== */
 .main-content {

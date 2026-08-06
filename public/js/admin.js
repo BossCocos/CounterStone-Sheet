@@ -188,9 +188,12 @@ function xpForNextLevel(level) {
 }
 
 // Навігація
-document.getElementById('navChar').addEventListener('click', () => {});
+document.getElementById('navChar').addEventListener('click', () => alert('Характеристики'));
 document.getElementById('navInfo').addEventListener('click', () => alert('Інфо'));
 document.getElementById('navMap').addEventListener('click', () => alert('Мапа'));
+document.getElementById('navSkills').addEventListener('click', () => {window.location.href = 'admin_skills.html';});
+document.getElementById('navTavern').addEventListener('click', () => alert('Таверна'));
+document.getElementById('navChat').addEventListener('click', () => alert('Чат'));
 document.getElementById('navLogout').addEventListener('click', () => {
   window.location.href = 'index.html';
 });

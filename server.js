@@ -517,6 +517,17 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('component:update', async ({ componentId, data }, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const comp = await Component.findByIdAndUpdate(componentId, data, { new: true });
+      if (!comp) return callback({ error: 'Компонент не знайдено' });
+      callback({ success: true, component: comp });
+    } catch (err) {
+      callback({ error: 'Помилка оновлення' });
+    }
+  });
+
   socket.on('settings:get', async (callback) => {
     try {
       const maxScripts = await Settings.findOne({ key: 'maxScripts' });

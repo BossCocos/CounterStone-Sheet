@@ -1,5 +1,6 @@
 const socket = io();
-let selectedPlayer = null; // discordName вибраного гравця
+let selectedPlayer = null;
+let allPlayers = []; // збережемо список гравців
 
 // ---- Логін адміна ----
 document.getElementById('adminLoginBtn').addEventListener('click', () => {
@@ -35,6 +36,12 @@ function initAdmin() {
   document.getElementById('createSkillBtn').addEventListener('click', createSkill);
   document.getElementById('updateMaxScripts').addEventListener('click', updateMaxScripts);
 
+  // Редагування компонента
+  document.getElementById('saveEditComponent').addEventListener('click', saveEditComponent);
+  document.getElementById('cancelEditComponent').addEventListener('click', () => {
+    document.getElementById('editComponentModal').classList.remove('active');
+  });
+
   // Обробник вибору гравця
   document.getElementById('playerSelect').addEventListener('change', onPlayerSelect);
   document.getElementById('addCompToPlayer').addEventListener('click', addComponentToPlayer);
@@ -49,6 +56,7 @@ function loadComponents() {
     list.innerHTML = res.components.map(c => `
       <div style="border-bottom:1px solid var(--border); padding:4px;">
         <b>${c.name}</b> (${c.type}, ${c.rarity})
+        <button class="neon-btn" onclick="editComponent('${c._id}')">✏️</button>
         <button class="neon-btn danger-btn" onclick="deleteComponent('${c._id}')">×</button>
       </div>`).join('');
   });
@@ -68,6 +76,42 @@ function createComponent() {
     if (res.error) return alert(res.error);
     loadComponents();
     clearComponentForm();
+  });
+}
+
+function editComponent(id) {
+  // Отримуємо всі компоненти, щоб знайти потрібний
+  socket.emit('component:getAll', (res) => {
+    if (!res.success) return;
+    const comp = res.components.find(c => c._id === id);
+    if (!comp) return;
+    document.getElementById('editCompId').value = comp._id;
+    document.getElementById('editCompName').value = comp.name;
+    document.getElementById('editCompType').value = comp.type;
+    document.getElementById('editCompCategory').value = comp.category;
+    document.getElementById('editCompRarity').value = comp.rarity;
+    document.getElementById('editCompDesc').value = comp.description || '';
+    document.getElementById('editCompLim').value = comp.limitations || '';
+    document.getElementById('editCompSource').value = comp.source || '';
+    document.getElementById('editComponentModal').classList.add('active');
+  });
+}
+
+function saveEditComponent() {
+  const id = document.getElementById('editCompId').value;
+  const data = {
+    name: document.getElementById('editCompName').value,
+    type: document.getElementById('editCompType').value,
+    category: document.getElementById('editCompCategory').value,
+    rarity: document.getElementById('editCompRarity').value,
+    description: document.getElementById('editCompDesc').value,
+    limitations: document.getElementById('editCompLim').value,
+    source: document.getElementById('editCompSource').value
+  };
+  socket.emit('component:update', { componentId: id, data }, (res) => {
+    if (res.error) return alert(res.error);
+    document.getElementById('editComponentModal').classList.remove('active');
+    loadComponents();
   });
 }
 
@@ -115,14 +159,8 @@ function deleteSkill(id) {
 
 // ---- Гравці ----
 function loadPlayers() {
-  socket.emit('admin:playerList', (res) => {  // Ми створимо цю подію на сервері, або використаємо admin:login колбек. Тут припустимо, що ми маємо окремий запит. Можна обійтися: при логіні ми вже отримали список, збережемо його.
-    // Якщо ви не додали admin:playerList як окремий обробник, можна скористатися тим, що при логіні ми його отримали, і зберегти глобально.
-    // Для простоти я зроблю запит через admin:getPlayerList, який треба додати в серверну частину (нижче).
-  });
-  // Оскільки ми не маємо окремого обробника, використаємо дані з логіну (якщо ми їх зберегли). Але краще додати універсальний запит.
-  // Тому я реалізую через сокет: при логіні ми отримуємо список, збережемо в змінну. Або зробимо запит admin:requestPlayerList.
-  // Для повноти я додам нижче необхідний серверний обробник. А в цьому коді викличемо його.
   socket.emit('admin:getPlayerList', (players) => {
+    allPlayers = players;
     const select = document.getElementById('playerSelect');
     select.innerHTML = '<option value="">-- Оберіть --</option>';
     players.forEach(p => {
@@ -131,36 +169,32 @@ function loadPlayers() {
       opt.textContent = `${p.nickname} (${p.discordName})`;
       select.appendChild(opt);
     });
-    // Також заповнимо списки компонентів та навичок для додавання
-    fillAllComponentsSelect();
-    fillAllSkillsSelect();
+    // Заповнюємо списки компонентів та навичок
+    fillSelects();
   });
 }
 
-function fillAllComponentsSelect() {
+function fillSelects() {
   socket.emit('component:getAll', (res) => {
     if (!res.success) return;
-    const sel = document.getElementById('allComponentsSelect');
-    sel.innerHTML = '';
+    const compSelect = document.getElementById('allComponentsSelect');
+    compSelect.innerHTML = '';
     res.components.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c._id;
       opt.textContent = `${c.name} (${c.type})`;
-      sel.appendChild(opt);
+      compSelect.appendChild(opt);
     });
   });
-}
-
-function fillAllSkillsSelect() {
   socket.emit('passiveSkill:getAll', (res) => {
     if (!res.success) return;
-    const sel = document.getElementById('allSkillsSelect');
-    sel.innerHTML = '';
+    const skillSelect = document.getElementById('allSkillsSelect');
+    skillSelect.innerHTML = '';
     res.skills.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s._id;
       opt.textContent = s.name;
-      sel.appendChild(opt);
+      skillSelect.appendChild(opt);
     });
   });
 }
@@ -172,11 +206,11 @@ function onPlayerSelect() {
     return;
   }
   selectedPlayer = discordName;
-  // Отримуємо деталі гравця (інвентар, навички) через admin:getPlayer
   socket.emit('admin:getPlayer', discordName, (err, data) => {
     if (err) return alert(err);
     displayPlayerInventory(data.inventory);
     displayPlayerPassives(data.passiveSkills);
+    displayPlayerScripts(data.scripts);
     document.getElementById('playerActions').style.display = 'block';
   });
 }
@@ -187,10 +221,9 @@ function displayPlayerInventory(inventory) {
     div.innerHTML = '<p>Немає компонентів</p>';
     return;
   }
-  div.innerHTML = inventory.map(c => `
-    <div><b>${c.name}</b> (${c.type}) 
-      <button class="neon-btn danger-btn" onclick="removeComponentFromPlayer('${c._id}')">×</button>
-    </div>`).join('');
+  div.innerHTML = '<ul>' + inventory.map(c => 
+    `<li>${c.name} (${c.type}, ${c.rarity}) <button class="neon-btn danger-btn" onclick="removeComponentFromPlayer('${c._id}')">×</button></li>`
+  ).join('') + '</ul>';
 }
 
 function displayPlayerPassives(skills) {
@@ -199,10 +232,24 @@ function displayPlayerPassives(skills) {
     div.innerHTML = '<p>Немає навичок</p>';
     return;
   }
-  div.innerHTML = skills.map(s => `
-    <div><b>${s.name}</b> 
-      <button class="neon-btn danger-btn" onclick="removeSkillFromPlayer('${s._id}')">×</button>
-    </div>`).join('');
+  div.innerHTML = '<ul>' + skills.map(s => 
+    `<li>${s.name} (${s.rarity}) <button class="neon-btn danger-btn" onclick="removeSkillFromPlayer('${s._id}')">×</button></li>`
+  ).join('') + '</ul>';
+}
+
+function displayPlayerScripts(scripts) {
+  const div = document.getElementById('playerScripts');
+  if (!scripts || scripts.length === 0) {
+    div.innerHTML = '<p>Немає скриптів</p>';
+    return;
+  }
+  div.innerHTML = scripts.map(s => `
+    <div style="border:1px solid var(--border); margin:4px; padding:4px;">
+      <b>${s.name || 'Без назви'}</b>
+      <p>${s.description || ''}</p>
+      <small>Компоненти: ${s.componentDetails.map(c=>c.component.name).join(', ')}</small>
+    </div>
+  `).join('');
 }
 
 function addComponentToPlayer() {

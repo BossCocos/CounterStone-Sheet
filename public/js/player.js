@@ -63,6 +63,15 @@ document.getElementById('navInfo').addEventListener('click', () => {
 document.getElementById('navMap').addEventListener('click', () => {
   alert('Карта (буде реалізована)');
 });
+document.getElementById('navSkills').addEventListener('click', () => {
+  window.location.href = 'skills.html';
+});
+document.getElementById('navTavern').addEventListener('click', () => {
+  alert('Таверна (буде реалізована)');
+});
+document.getElementById('navChat').addEventListener('click', () => {
+  alert('Чат (буде реалізована)');
+});
 document.getElementById('navLogout').addEventListener('click', () => {
   sessionStorage.removeItem('playerId');
   window.location.href = 'index.html';

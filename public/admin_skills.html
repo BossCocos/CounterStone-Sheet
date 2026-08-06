@@ -15,7 +15,7 @@
 </head>
 <body>
   <nav class="side-nav">
-    <button class="icon-char active" data-tooltip="Character" id="navChar" onclick="location.href='admin.html'"></button>
+    <button class="icon-char" data-tooltip="Character" id="navChar" onclick="location.href='admin.html'"></button>
     <button class="icon-info" data-tooltip="Info" id="navInfo"></button>
     <button class="icon-map" data-tooltip="Map" id="navMap"></button>
     <button class="icon-skills active" data-tooltip="Skills" id="navSkills"></button>
@@ -87,6 +87,8 @@
           <div id="playerInventory"></div>
           <h4>Пасивні навички гравця</h4>
           <div id="playerPassives"></div>
+          <h4>Скрипти гравця</h4>
+          <div id="playerScripts"></div>
         </div>
       </div>
 
@@ -96,6 +98,23 @@
         <input type="number" id="maxScriptsInput" value="3" min="1">
         <button id="updateMaxScripts" class="neon-btn">Оновити</button>
       </div>
+    </div>
+  </div>
+
+    <!-- Модальне вікно редагування компонента -->
+  <div class="modal" id="editComponentModal">
+    <div class="modal-content">
+      <h3>Редагувати компонент</h3>
+      <input type="hidden" id="editCompId">
+      <div class="form-group"><label>Назва:</label><input type="text" id="editCompName"></div>
+      <div class="form-group"><label>Тип:</label><select id="editCompType"><option>Тригер</option><option>Ядро</option><option>Вектор</option></select></div>
+      <div class="form-group"><label>Категорія:</label><select id="editCompCategory"><option>Фізика</option><option>Просторові</option><option>Сенсорні</option><option>Елементарні</option><option>Психологічні</option><option>Надскладні</option></select></div>
+      <div class="form-group"><label>Рідкісність:</label><select id="editCompRarity"><option>Звичайний</option><option>Незвичайний</option><option>Рідкісний</option><option>Епічний</option><option>Легендарний</option><option>Унікальний</option></select></div>
+      <div class="form-group"><label>Опис:</label><textarea id="editCompDesc" rows="2"></textarea></div>
+      <div class="form-group"><label>Обмеження:</label><input type="text" id="editCompLim"></div>
+      <div class="form-group"><label>Джерело:</label><input type="text" id="editCompSource"></div>
+      <button id="saveEditComponent" class="neon-btn">Зберегти</button>
+      <button id="cancelEditComponent" class="neon-btn">Скасувати</button>
     </div>
   </div>
 
