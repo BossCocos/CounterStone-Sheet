@@ -58,6 +58,27 @@ const playerSchema = new mongoose.Schema({
 
 const Player = mongoose.model('Player', playerSchema);
 
+const tokenStore = new Map(); // ключ: токен, значення: { discordName, isAdmin, expires }
+
+function generateToken(discordName, isAdmin) {
+  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  const expires = Date.now() + 15 * 60 * 1000; // 15 хвилин
+  tokenStore.set(token, { discordName, isAdmin, expires });
+  // автоматичне видалення після закінчення терміну дії
+  setTimeout(() => tokenStore.delete(token), 15 * 60 * 1000);
+  return token;
+}
+
+function verifyToken(token) {
+  const data = tokenStore.get(token);
+  if (!data || data.expires < Date.now()) {
+    tokenStore.delete(token);
+    return null;
+  }
+  return data;
+}
+
+
 // ====== ДОПОМІЖНІ ФУНКЦІЇ ======
 function calcMaxHp(statHealth) {
   if (statHealth <= 0) return 10;
@@ -239,7 +260,8 @@ io.on('connection', (socket) => {
       socket.playerId = discordName;
       socket.join(`player:${discordName}`);
       socket.emit('player:state', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
@@ -257,7 +279,8 @@ io.on('connection', (socket) => {
         // решта полів за замовчуванням
       });
       await newPlayer.save();
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка реєстрації' });
     }
@@ -287,7 +310,8 @@ io.on('connection', (socket) => {
 
       io.to(`player:${socket.playerId}`).emit('player:state', await sanitizePlayer(player));
       io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
@@ -355,7 +379,8 @@ io.on('connection', (socket) => {
       await player.save();
       io.to(`player:${socket.playerId}`).emit('player:state', await sanitizePlayer(player));
       io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
@@ -376,7 +401,8 @@ io.on('connection', (socket) => {
       await player.save();
       io.to(`player:${socket.playerId}`).emit('player:state', await sanitizePlayer(player));
       io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
@@ -413,7 +439,8 @@ io.on('connection', (socket) => {
       // Видаляємо з інвентарів усіх гравців
       await Player.updateMany({}, { $pull: { inventory: componentId } });
       // Також видаляємо зі скриптів? Компоненти в скриптах зберігаються як посилання; можна залишити або видалити скрипти, що містять цей компонент. Поки що просто видаляємо з інвентаря.
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка видалення' });
     }
@@ -430,7 +457,8 @@ io.on('connection', (socket) => {
       await player.save();
       // Сповістити гравця (якщо онлайн)
       io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
@@ -445,7 +473,8 @@ io.on('connection', (socket) => {
       player.inventory.pull(componentId);
       await player.save();
       io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
@@ -480,7 +509,8 @@ io.on('connection', (socket) => {
     try {
       await PassiveSkill.findByIdAndDelete(skillId);
       await Player.updateMany({}, { $pull: { passiveSkills: skillId } });
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка' });
     }
@@ -496,7 +526,8 @@ io.on('connection', (socket) => {
       player.passiveSkills.push(skillId);
       await player.save();
       io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка' });
     }
@@ -511,7 +542,8 @@ io.on('connection', (socket) => {
       player.passiveSkills.pull(skillId);
       await player.save();
       io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка' });
     }
@@ -541,7 +573,8 @@ io.on('connection', (socket) => {
     if (!socket.isAdmin) return callback({ error: 'Немає прав' });
     try {
       await Settings.findOneAndUpdate({ key: 'maxScripts' }, { value: maxScripts }, { upsert: true });
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка оновлення' });
     }
@@ -560,24 +593,46 @@ io.on('connection', (socket) => {
     }
   });
 
-// Отримати гравця (admin:getPlayer) – у вас вже має бути, але переконайтеся, що він повертає inventory, passiveSkills як об'єкти (через sanitizePlayer)
 
- socket.on('admin:login', async ({ password }, callback) => {
-    if (password !== ADMIN_PASSWORD) return callback({ error: 'Невірний пароль адміністратора' });
-    socket.isAdmin = true;
-    socket.join('admins');
-    try {
-      const allPlayers = await Player.find({}, 'discordName nickname level').lean();
-      const list = allPlayers.map(p => ({
-        discordName: p.discordName,
-        nickname: p.nickname,
-        level: p.level
-      }));
-      callback({ success: true, players: list });  // список у відповіді
-    } catch (err) {
-      callback({ error: 'Помилка завантаження списку' });
+  socket.on('admin:login', async ({ password }, callback) => {
+      if (password !== ADMIN_PASSWORD) return callback({ error: 'Невірний пароль адміністратора' });
+      socket.isAdmin = true;
+      socket.join('admins');
+      try {
+          const allPlayers = await Player.find({}, 'discordName nickname level').lean();
+          const list = allPlayers.map(p => ({
+              discordName: p.discordName,
+              nickname: p.nickname,
+              level: p.level
+          }));
+          const token = generateToken('admin', true); // ім'я 'admin' як ідентифікатор
+          callback({ success: true, players: list, token });
+      } catch (err) {
+          callback({ error: 'Помилка завантаження списку' });
+      }
+  });
+
+  socket.on('auth:token', (token, callback) => {
+    const data = verifyToken(token);
+    if (!data) return callback({ error: 'Токен недійсний або прострочений' });
+    if (data.isAdmin) {
+      socket.isAdmin = true;
+      socket.join('admins');
+      callback({ success: true, isAdmin: true, discordName: 'admin' });
+    } else {
+      socket.playerId = data.discordName;
+      socket.join(`player:${data.discordName}`);
+      // відправити стан гравця
+      Player.findOne({ discordName: data.discordName }).then(player => {
+        if (player) {
+          sanitizePlayer(player).then(sanitized => {
+            socket.emit('player:state', sanitized);
+          });
+        }
+      });
+      callback({ success: true, isAdmin: false, discordName: data.discordName });
     }
- });
+  });
 
   socket.on('admin:getPlayer', async (discordName, callback) => {
     if (!socket.isAdmin) return callback({ error: 'Недостатньо прав' });
@@ -637,7 +692,8 @@ io.on('connection', (socket) => {
 
       io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
       io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
-      callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
@@ -759,7 +815,8 @@ socket.on('admin:removeEffect', async ({ discordName, effectIndex }) => {
       targetSocket.playerId = null;
     }
     io.to('admins').emit('admin:playerList', await getPlayerList());
-    callback({ success: true });
+      const token = generateToken(discordName, false);
+      callback({ success: true, token });
   });
 
   // Оновлення списку (викликається при потребі)

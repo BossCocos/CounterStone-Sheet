@@ -4,6 +4,21 @@ let selectedComponentId = null;
 let currentScriptIndex = -1; // індекс скрипта, що редагується
 const slots = { trigger: null, core: null, vector: null };
 
+const savedToken = sessionStorage.getItem('authToken');
+if (savedToken) {
+  socket.emit('auth:token', savedToken, (res) => {
+    if (res.success && !res.isAdmin) {
+      loginContainer.style.display = 'none';
+      playerContainer.style.display = 'block';
+      // player:state прийде автоматично
+    } else {
+      sessionStorage.removeItem('authToken');
+      loginContainer.style.display = 'block';
+    }
+  });
+} else {
+  loginContainer.style.display = 'block';
+}
 // ---- Авторизація ----
 const loginBlock = document.getElementById('loginBlock');
 const skillsMain = document.getElementById('skillsMain');
@@ -29,6 +44,8 @@ loginBtn.addEventListener('click', () => {
     if (resp.error) {
       loginError.textContent = resp.error;
       return;
+    } else {
+            sessionStorage.setItem('authToken', res.token);
     }
     // Успіх – зберігаємо ID та показуємо інтерфейс
     sessionStorage.setItem('playerId', name);

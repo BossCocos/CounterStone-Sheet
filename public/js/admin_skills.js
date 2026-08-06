@@ -1,8 +1,27 @@
 const socket = io();
 let selectedPlayer = null;
-let allPlayers = []; // збережемо список гравців
+let allPlayers = [];
 
-// ---- Логін адміна ----
+// ---- Автоматичний вхід через токен ----
+const savedToken = sessionStorage.getItem('authToken');
+if (savedToken) {
+  socket.emit('auth:token', savedToken, (res) => {
+    if (res.success && res.isAdmin) {
+      document.getElementById('adminLoginBlock').style.display = 'none';
+      document.getElementById('adminMain').style.display = 'block';
+      initAdmin();
+      return;
+    } else {
+      sessionStorage.removeItem('authToken');
+    }
+  });
+}
+
+// Якщо токена немає або він недійсний, показуємо форму логіну
+document.getElementById('adminLoginBlock').style.display = 'block';
+document.getElementById('adminMain').style.display = 'none';
+
+// ---- Логін через форму ----
 document.getElementById('adminLoginBtn').addEventListener('click', () => {
   const pass = document.getElementById('adminPass').value;
   socket.emit('admin:login', { password: pass }, (res) => {
@@ -10,8 +29,12 @@ document.getElementById('adminLoginBtn').addEventListener('click', () => {
       document.getElementById('adminLoginError').textContent = res.error;
       return;
     }
+    sessionStorage.setItem('authToken', res.token);
     document.getElementById('adminLoginBlock').style.display = 'none';
     document.getElementById('adminMain').style.display = 'block';
+    if (res.players) {
+      populatePlayerSelect(res.players);
+    }
     initAdmin();
   });
 });
@@ -28,8 +51,14 @@ function initAdmin() {
   // Завантаження даних
   loadComponents();
   loadPassiveSkills();
-  loadPlayers();
   loadSettings();
+
+  // Якщо список гравців не був отриманий (наприклад, при автологіні), завантажимо
+  if (!allPlayers.length) {
+    loadPlayers();
+  } else {
+    fillSelects();
+  }
 
   // Обробники створення
   document.getElementById('createComponentBtn').addEventListener('click', createComponent);
@@ -48,129 +77,25 @@ function initAdmin() {
   document.getElementById('addSkillToPlayer').addEventListener('click', addSkillToPlayer);
 }
 
-// ---- Компоненти ----
-function loadComponents() {
-  socket.emit('component:getAll', (res) => {
-    if (!res.success) return;
-    const list = document.getElementById('componentsList');
-    list.innerHTML = res.components.map(c => `
-      <div style="border-bottom:1px solid var(--border); padding:4px;">
-        <b>${c.name}</b> (${c.type}, ${c.rarity})
-        <button class="neon-btn" onclick="editComponent('${c._id}')">✏️</button>
-        <button class="neon-btn danger-btn" onclick="deleteComponent('${c._id}')">×</button>
-      </div>`).join('');
-  });
-}
-
-function createComponent() {
-  const data = {
-    name: document.getElementById('compName').value,
-    type: document.getElementById('compType').value,
-    category: document.getElementById('compCategory').value,
-    rarity: document.getElementById('compRarity').value,
-    description: document.getElementById('compDesc').value,
-    limitations: document.getElementById('compLim').value,
-    source: document.getElementById('compSource').value
-  };
-  socket.emit('component:create', data, (res) => {
-    if (res.error) return alert(res.error);
-    loadComponents();
-    clearComponentForm();
-  });
-}
-
-function editComponent(id) {
-  // Отримуємо всі компоненти, щоб знайти потрібний
-  socket.emit('component:getAll', (res) => {
-    if (!res.success) return;
-    const comp = res.components.find(c => c._id === id);
-    if (!comp) return;
-    document.getElementById('editCompId').value = comp._id;
-    document.getElementById('editCompName').value = comp.name;
-    document.getElementById('editCompType').value = comp.type;
-    document.getElementById('editCompCategory').value = comp.category;
-    document.getElementById('editCompRarity').value = comp.rarity;
-    document.getElementById('editCompDesc').value = comp.description || '';
-    document.getElementById('editCompLim').value = comp.limitations || '';
-    document.getElementById('editCompSource').value = comp.source || '';
-    document.getElementById('editComponentModal').classList.add('active');
-  });
-}
-
-function saveEditComponent() {
-  const id = document.getElementById('editCompId').value;
-  const data = {
-    name: document.getElementById('editCompName').value,
-    type: document.getElementById('editCompType').value,
-    category: document.getElementById('editCompCategory').value,
-    rarity: document.getElementById('editCompRarity').value,
-    description: document.getElementById('editCompDesc').value,
-    limitations: document.getElementById('editCompLim').value,
-    source: document.getElementById('editCompSource').value
-  };
-  socket.emit('component:update', { componentId: id, data }, (res) => {
-    if (res.error) return alert(res.error);
-    document.getElementById('editComponentModal').classList.remove('active');
-    loadComponents();
-  });
-}
-
-function deleteComponent(id) {
-  if (!confirm('Видалити компонент?')) return;
-  socket.emit('component:delete', id, (res) => {
-    if (res.error) return alert(res.error);
-    loadComponents();
-  });
-}
-
-// ---- Пасивні навички ----
-function loadPassiveSkills() {
-  socket.emit('passiveSkill:getAll', (res) => {
-    if (!res.success) return;
-    const list = document.getElementById('skillsList');
-    list.innerHTML = res.skills.map(s => `
-      <div style="border-bottom:1px solid var(--border); padding:4px;">
-        <b>${s.name}</b> (${s.rarity})
-        <button class="neon-btn danger-btn" onclick="deleteSkill('${s._id}')">×</button>
-      </div>`).join('');
-  });
-}
-
-function createSkill() {
-  const data = {
-    name: document.getElementById('skillName').value,
-    rarity: document.getElementById('skillRarity').value,
-    description: document.getElementById('skillDesc').value,
-    source: document.getElementById('skillSource').value
-  };
-  socket.emit('passiveSkill:create', data, (res) => {
-    if (res.error) return alert(res.error);
-    loadPassiveSkills();
-  });
-}
-
-function deleteSkill(id) {
-  if (!confirm('Видалити навичку?')) return;
-  socket.emit('passiveSkill:delete', id, (res) => {
-    if (res.error) return alert(res.error);
-    loadPassiveSkills();
-  });
-}
-
 // ---- Гравці ----
+function populatePlayerSelect(players) {
+  allPlayers = players;
+  const select = document.getElementById('playerSelect');
+  select.innerHTML = '<option value="">-- Оберіть --</option>';
+  players.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.discordName;
+    opt.textContent = `${p.nickname} (${p.discordName})`;
+    select.appendChild(opt);
+  });
+  fillSelects();
+}
+
 function loadPlayers() {
   socket.emit('admin:getPlayerList', (players) => {
-    allPlayers = players;
-    const select = document.getElementById('playerSelect');
-    select.innerHTML = '<option value="">-- Оберіть --</option>';
-    players.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.discordName;
-      opt.textContent = `${p.nickname} (${p.discordName})`;
-      select.appendChild(opt);
-    });
-    // Заповнюємо списки компонентів та навичок
-    fillSelects();
+    if (players && players.length) {
+      populatePlayerSelect(players);
+    }
   });
 }
 
@@ -221,7 +146,7 @@ function displayPlayerInventory(inventory) {
     div.innerHTML = '<p>Немає компонентів</p>';
     return;
   }
-  div.innerHTML = '<ul>' + inventory.map(c => 
+  div.innerHTML = '<ul>' + inventory.map(c =>
     `<li>${c.name} (${c.type}, ${c.rarity}) <button class="neon-btn danger-btn" onclick="removeComponentFromPlayer('${c._id}')">×</button></li>`
   ).join('') + '</ul>';
 }
@@ -232,7 +157,7 @@ function displayPlayerPassives(skills) {
     div.innerHTML = '<p>Немає навичок</p>';
     return;
   }
-  div.innerHTML = '<ul>' + skills.map(s => 
+  div.innerHTML = '<ul>' + skills.map(s =>
     `<li>${s.name} (${s.rarity}) <button class="neon-btn danger-btn" onclick="removeSkillFromPlayer('${s._id}')">×</button></li>`
   ).join('') + '</ul>';
 }
@@ -257,7 +182,7 @@ function addComponentToPlayer() {
   if (!compId || !selectedPlayer) return;
   socket.emit('component:addToPlayer', { discordName: selectedPlayer, componentId: compId }, (res) => {
     if (res.error) return alert(res.error);
-    onPlayerSelect(); // оновити
+    onPlayerSelect();
   });
 }
 
@@ -283,6 +208,121 @@ function removeSkillFromPlayer(skillId) {
   socket.emit('passiveSkill:removeFromPlayer', { discordName: selectedPlayer, skillId }, (res) => {
     if (res.error) return alert(res.error);
     onPlayerSelect();
+  });
+}
+
+// ---- Компоненти ----
+function loadComponents() {
+  socket.emit('component:getAll', (res) => {
+    if (!res.success) return;
+    const list = document.getElementById('componentsList');
+    list.innerHTML = res.components.map(c => `
+      <div style="border-bottom:1px solid var(--border); padding:4px;">
+        <b>${c.name}</b> (${c.type}, ${c.rarity})
+        <button class="neon-btn" onclick="editComponent('${c._id}')">✏️</button>
+        <button class="neon-btn danger-btn" onclick="deleteComponent('${c._id}')">×</button>
+      </div>`).join('');
+  });
+}
+
+function createComponent() {
+  const data = {
+    name: document.getElementById('compName').value,
+    type: document.getElementById('compType').value,
+    category: document.getElementById('compCategory').value,
+    rarity: document.getElementById('compRarity').value,
+    description: document.getElementById('compDesc').value,
+    limitations: document.getElementById('compLim').value,
+    source: document.getElementById('compSource').value
+  };
+  socket.emit('component:create', data, (res) => {
+    if (res.error) return alert(res.error);
+    loadComponents();
+    clearComponentForm();
+  });
+}
+
+function editComponent(id) {
+  socket.emit('component:getAll', (res) => {
+    if (!res.success) return;
+    const comp = res.components.find(c => c._id === id);
+    if (!comp) return;
+    document.getElementById('editCompId').value = comp._id;
+    document.getElementById('editCompName').value = comp.name;
+    document.getElementById('editCompType').value = comp.type;
+    document.getElementById('editCompCategory').value = comp.category;
+    document.getElementById('editCompRarity').value = comp.rarity;
+    document.getElementById('editCompDesc').value = comp.description || '';
+    document.getElementById('editCompLim').value = comp.limitations || '';
+    document.getElementById('editCompSource').value = comp.source || '';
+    document.getElementById('editComponentModal').classList.add('active');
+  });
+}
+
+function saveEditComponent() {
+  const id = document.getElementById('editCompId').value;
+  const data = {
+    name: document.getElementById('editCompName').value,
+    type: document.getElementById('editCompType').value,
+    category: document.getElementById('editCompCategory').value,
+    rarity: document.getElementById('editCompRarity').value,
+    description: document.getElementById('editCompDesc').value,
+    limitations: document.getElementById('editCompLim').value,
+    source: document.getElementById('editCompSource').value
+  };
+  socket.emit('component:update', { componentId: id, data }, (res) => {
+    if (res.error) return alert(res.error);
+    document.getElementById('editComponentModal').classList.remove('active');
+    loadComponents();
+  });
+}
+
+function deleteComponent(id) {
+  if (!confirm('Видалити компонент?')) return;
+  socket.emit('component:delete', id, (res) => {
+    if (res.error) return alert(res.error);
+    loadComponents();
+  });
+}
+
+function clearComponentForm() {
+  document.getElementById('compName').value = '';
+  document.getElementById('compDesc').value = '';
+  document.getElementById('compLim').value = '';
+  document.getElementById('compSource').value = '';
+}
+
+// ---- Пасивні навички ----
+function loadPassiveSkills() {
+  socket.emit('passiveSkill:getAll', (res) => {
+    if (!res.success) return;
+    const list = document.getElementById('skillsList');
+    list.innerHTML = res.skills.map(s => `
+      <div style="border-bottom:1px solid var(--border); padding:4px;">
+        <b>${s.name}</b> (${s.rarity})
+        <button class="neon-btn danger-btn" onclick="deleteSkill('${s._id}')">×</button>
+      </div>`).join('');
+  });
+}
+
+function createSkill() {
+  const data = {
+    name: document.getElementById('skillName').value,
+    rarity: document.getElementById('skillRarity').value,
+    description: document.getElementById('skillDesc').value,
+    source: document.getElementById('skillSource').value
+  };
+  socket.emit('passiveSkill:create', data, (res) => {
+    if (res.error) return alert(res.error);
+    loadPassiveSkills();
+  });
+}
+
+function deleteSkill(id) {
+  if (!confirm('Видалити навичку?')) return;
+  socket.emit('passiveSkill:delete', id, (res) => {
+    if (res.error) return alert(res.error);
+    loadPassiveSkills();
   });
 }
 

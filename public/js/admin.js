@@ -1,6 +1,21 @@
 const socket = io();
 let selectedPlayerId = null;
 
+const savedToken = sessionStorage.getItem('authToken');
+if (savedToken) {
+  socket.emit('auth:token', savedToken, (res) => {
+    if (res.success && !res.isAdmin) {
+      loginContainer.style.display = 'none';
+      playerContainer.style.display = 'block';
+      // player:state прийде автоматично
+    } else {
+      sessionStorage.removeItem('authToken');
+      loginContainer.style.display = 'block';
+    }
+  });
+} else {
+  loginContainer.style.display = 'block';
+}
 // Логін
 document.getElementById('adminEnter').addEventListener('click', () => {
   const pass = document.getElementById('adminPass').value;
@@ -12,6 +27,7 @@ document.getElementById('adminEnter').addEventListener('click', () => {
       document.getElementById('adminContent').style.display = 'block';
       renderPlayerList(res.players);
       setupSocketListeners();
+      sessionStorage.setItem('authToken', res.token);
     }
   });
 });
