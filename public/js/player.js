@@ -90,6 +90,7 @@ document.getElementById('navChat').addEventListener('click', () => {
   alert('Чат (буде реалізована)');
 });
 document.getElementById('navLogout').addEventListener('click', () => {
+  sessionStorage.removeItem('authToken');
   sessionStorage.removeItem('playerId');
   window.location.href = 'index.html';
 });

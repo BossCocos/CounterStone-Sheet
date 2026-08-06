@@ -1,19 +1,19 @@
 const socket = io();
 
+// Перевірка токена
 const savedToken = sessionStorage.getItem('authToken');
 if (savedToken) {
-  socket.emit('auth:token', savedToken, (res) => {
-    if (res.success && !res.isAdmin) {
-      loginContainer.style.display = 'none';
-      playerContainer.style.display = 'block';
-      // player:state прийде автоматично
-    } else {
-      sessionStorage.removeItem('authToken');
-      loginContainer.style.display = 'block';
-    }
-  });
-} else {
-  loginContainer.style.display = 'block';
+    socket.emit('auth:token', savedToken, (res) => {
+        if (res.success) {
+            if (res.isAdmin) {
+                window.location.href = 'admin.html';
+            } else {
+                window.location.href = 'player.html';
+            }
+        } else {
+            sessionStorage.removeItem('authToken');
+        }
+    });
 }
 // Перемикання форм
 function toggleForms() {
@@ -42,10 +42,9 @@ document.getElementById('loginForm').addEventListener('submit', (e) => {
       document.getElementById('loginError').textContent = response.error;
       document.getElementById('loginError').style.display = 'block';
     } else {
-      // Зберігаємо ім'я для автоматичного входу (потрібен буде токен)
+      sessionStorage.setItem('authToken', res.token);
       sessionStorage.setItem('playerId', discordName);
       window.location.href = 'player.html';
-      sessionStorage.setItem('authToken', res.token);
     }
   });
 });

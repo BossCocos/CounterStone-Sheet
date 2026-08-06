@@ -23,12 +23,12 @@ document.getElementById('adminEnter').addEventListener('click', () => {
     if (res.error) {
       document.getElementById('adminError').textContent = res.error;
     } else {
-      document.getElementById('adminLoginForm').style.display = 'none';
-      document.getElementById('adminContent').style.display = 'block';
-      renderPlayerList(res.players);
-      setupSocketListeners();
-      sessionStorage.setItem('authToken', res.token);
-    }
+            sessionStorage.setItem('authToken', res.token);
+            document.getElementById('adminLoginForm').style.display = 'none';
+            document.getElementById('adminContent').style.display = 'block';
+            renderPlayerList(res.players);
+            setupSocketListeners();
+        }
   });
 });
 
@@ -211,6 +211,7 @@ document.getElementById('navSkills').addEventListener('click', () => {window.loc
 document.getElementById('navTavern').addEventListener('click', () => alert('Таверна'));
 document.getElementById('navChat').addEventListener('click', () => alert('Чат'));
 document.getElementById('navLogout').addEventListener('click', () => {
+  sessionStorage.removeItem('authToken');
   window.location.href = 'index.html';
 });
 

@@ -251,21 +251,21 @@ io.on('connection', (socket) => {
   console.log('Нове підключення:', socket.id);
 
   // ---------- ГРАВЕЦЬ ----------
-  socket.on('player:login', async ({ discordName, password }, callback) => {
+    socket.on('player:login', async ({ discordName, password }, callback) => {
     try {
-      const player = await Player.findOne({ discordName });
-      if (!player) return callback({ error: 'Гравця не знайдено' });
-      if (!bcrypt.compareSync(password, player.passwordHash))
-        return callback({ error: 'Невірний пароль' });
-      socket.playerId = discordName;
-      socket.join(`player:${discordName}`);
-      socket.emit('player:state', await sanitizePlayer(player));
-      const token = generateToken(discordName, false);
-      callback({ success: true, token });
+        const player = await Player.findOne({ discordName });
+        if (!player) return callback({ error: 'Гравця не знайдено' });
+        if (!bcrypt.compareSync(password, player.passwordHash))
+            return callback({ error: 'Невірний пароль' });
+        socket.playerId = discordName;
+        socket.join(`player:${discordName}`);
+        const token = generateToken(discordName, false);
+        socket.emit('player:state', await sanitizePlayer(player));
+        callback({ success: true, token });
     } catch (err) {
-      callback({ error: 'Помилка сервера' });
+        callback({ error: 'Помилка сервера' });
     }
-  });
+});
 
   socket.on('player:register', async ({ nickname, discordName, password }, callback) => {
     try {
