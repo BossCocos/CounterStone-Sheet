@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Навички - Конструктор скриптів</title>
+  <link rel="stylesheet" href="char_style.css">
+  <style>
+    .skills-container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .triangle-area {
+      width: 300px;
+      height: 300px;
+      background: url('icons/triangle-bg.png') center/contain no-repeat;
+      position: relative;
+      margin-right: 20px;
+    }
+    .slot {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      border: 2px dashed var(--border-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      background: rgba(0,0,0,0.7);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .slot:hover {
+      border-color: var(--accent);
+      background: rgba(45,127,193,0.2);
+    }
+    .slot.filled {
+      border-style: solid;
+      background: var(--accent);
+      color: #000;
+      font-weight: bold;
+    }
+    .slot.trigger { top: 10px; left: 50%; transform: translateX(-50%); }
+    .slot.core { bottom: 10px; left: 20px; }
+    .slot.vector { bottom: 10px; right: 20px; }
+
+    .inventory-panel {
+      width: 220px;
+      border: 1px solid var(--border);
+      padding: 10px;
+      max-height: 400px;
+      overflow-y: auto;
+      background: var(--surface);
+    }
+    .component-item {
+      padding: 6px 8px;
+      margin: 4px 0;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      transition: 0.15s;
+    }
+    .component-item:hover {
+      background: rgba(45,127,193,0.15);
+    }
+    .component-item.selected {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #000;
+      font-weight: bold;
+    }
+
+    .scripts-list {
+      margin-top: 20px;
+    }
+    .script-entry {
+      border: 1px solid var(--border);
+      padding: 10px;
+      margin-bottom: 8px;
+      background: var(--surface);
+    }
+    .script-entry button {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Бічна навігація (додані нові кнопки) -->
+  <nav class="side-nav">
+    <button class="icon-char" data-tooltip="Character" onclick="location.href='player.html'"></button>
+    <button class="icon-info" data-tooltip="Info"></button>
+    <button class="icon-map" data-tooltip="Map"></button>
+    <button class="icon-skills active" data-tooltip="Skills"></button>
+    <button class="icon-tavern" data-tooltip="Tavern"></button>
+    <button class="icon-chat" data-tooltip="Chat"></button>
+    <button class="icon-logout logout-btn" data-tooltip="Log out" onclick="location.href='index.html'"></button>
+  </nav>
+
+  <div class="main-content">
+    <!-- Форма входу (з'явиться якщо гравець не авторизований) -->
+    <div id="loginBlock" style="display:none;">
+      <h2>Увійдіть для доступу до навичок</h2>
+      <input type="text" id="loginDiscord" placeholder="Discord ім'я">
+      <input type="password" id="loginPass" placeholder="Пароль">
+      <button id="loginBtn" class="neon-btn">Увійти</button>
+      <p id="loginError" style="color:red;"></p>
+    </div>
+
+    <!-- Основний інтерфейс (спочатку прихований) -->
+    <div id="skillsMain" style="display:none;">
+      <h2>Конструктор скриптів</h2>
+      <div class="skills-container">
+        <!-- Трикутник зі слотами -->
+        <div class="triangle-area" id="triangle">
+          <div class="slot trigger" data-slot="trigger">Тригер</div>
+          <div class="slot core" data-slot="core">Ядро</div>
+          <div class="slot vector" data-slot="vector">Вектор</div>
+        </div>
+
+        <!-- Інвентар -->
+        <div class="inventory-panel">
+          <h3>Компоненти</h3>
+          <div id="invList"></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 15px;">
+        <button id="combineBtn" class="neon-btn">Об'єднати</button>
+        <button id="disassembleBtn" class="neon-btn danger-btn" disabled>Роз'єднати</button>
+      </div>
+
+      <h3>Мої скрипти</h3>
+      <div class="scripts-list" id="scriptsContainer"></div>
+    </div>
+  </div>
+
+  <!-- Модальне вікно для заповнення скрипта -->
+  <div class="modal" id="scriptModal">
+    <div class="modal-content">
+      <h3>Створення скрипта</h3>
+      <input type="text" id="scriptName" placeholder="Назва скрипта"><br>
+      <textarea id="scriptDesc" placeholder="Опис" rows="3"></textarea><br>
+      <input type="text" id="scriptOath" placeholder="Клятва"><br>
+      <h4>КОДОРАМА</h4>
+      <div id="codoramaFields"></div>
+      <div style="margin-top:10px;">
+        <button id="saveScript" class="neon-btn">Зберегти</button>
+        <button id="cancelScript" class="neon-btn">Скасувати</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/skills.js"></script>
+</body>
+</html>

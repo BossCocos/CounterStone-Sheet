@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Адмін - Керування навичками</title>
+  <link rel="stylesheet" href="char_style.css">
+  <style>
+    .tab-buttons { margin-bottom: 20px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .form-group { margin: 8px 0; }
+    label { display: inline-block; width: 120px; color: var(--text-dim); }
+    select, input, textarea { background: var(--surface-light); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; font-family: var(--font); }
+  </style>
+</head>
+<body>
+  <nav class="side-nav">
+    <button class="icon-char active" data-tooltip="Character" id="navChar" onclick="location.href='admin.html'"></button>
+    <button class="icon-info" data-tooltip="Info" id="navInfo"></button>
+    <button class="icon-map" data-tooltip="Map" id="navMap"></button>
+    <button class="icon-skills active" data-tooltip="Skills" id="navSkills"></button>
+    <button class="icon-tavern" data-tooltip="Tavern" id="navTavern"></button>
+    <button class="icon-chat" data-tooltip="Chat" id="navChat"></button>
+    <button class="icon-logout logout-btn" data-tooltip="Log out" id="navLogout" onclick="location.href='index.html'"></button>
+  </nav>
+
+  <div class="main-content">
+    <!-- Форма входу адміна -->
+    <div id="adminLoginBlock">
+      <h2>Вхід адміністратора</h2>
+      <input type="password" id="adminPass" placeholder="Пароль">
+      <button id="adminLoginBtn" class="neon-btn">Увійти</button>
+      <p id="adminLoginError" style="color:red;"></p>
+    </div>
+
+    <!-- Основний вміст (прихований до логіну) -->
+    <div id="adminMain" style="display:none;">
+      <div class="tab-buttons">
+        <button class="neon-btn tablink" data-tab="components">Компоненти</button>
+        <button class="neon-btn tablink" data-tab="passiveSkills">Пасивні навички</button>
+        <button class="neon-btn tablink" data-tab="players">Гравці</button>
+        <button class="neon-btn tablink" data-tab="settings">Налаштування</button>
+      </div>
+
+      <!-- Вкладка компонентів -->
+      <div id="tab-components" class="tab-content active">
+        <h3>Створити новий компонент</h3>
+        <div class="form-group"><label>Назва:</label><input type="text" id="compName"></div>
+        <div class="form-group"><label>Тип:</label><select id="compType"><option>Тригер</option><option>Ядро</option><option>Вектор</option></select></div>
+        <div class="form-group"><label>Категорія:</label><select id="compCategory"><option>Фізика</option><option>Просторові</option><option>Сенсорні</option><option>Елементарні</option><option>Психологічні</option><option>Надскладні</option></select></div>
+        <div class="form-group"><label>Рідкісність:</label><select id="compRarity"><option>Звичайний</option><option>Незвичайний</option><option>Рідкісний</option><option>Епічний</option><option>Легендарний</option><option>Унікальний</option></select></div>
+        <div class="form-group"><label>Опис:</label><textarea id="compDesc" rows="2"></textarea></div>
+        <div class="form-group"><label>Обмеження:</label><input type="text" id="compLim"></div>
+        <div class="form-group"><label>Джерело:</label><input type="text" id="compSource"></div>
+        <button id="createComponentBtn" class="neon-btn">Створити</button>
+        <hr>
+        <h3>Існуючі компоненти</h3>
+        <div id="componentsList"></div>
+      </div>
+
+      <!-- Вкладка пасивних навичок -->
+      <div id="tab-passiveSkills" class="tab-content">
+        <h3>Створити пасивну навичку</h3>
+        <div class="form-group"><label>Назва:</label><input type="text" id="skillName"></div>
+        <div class="form-group"><label>Рідкісність:</label><select id="skillRarity"><option>Звичайний</option><option>Незвичайний</option><option>Рідкісний</option><option>Епічний</option><option>Легендарний</option><option>Унікальний</option></select></div>
+        <div class="form-group"><label>Опис:</label><textarea id="skillDesc" rows="2"></textarea></div>
+        <div class="form-group"><label>Джерело:</label><input type="text" id="skillSource"></div>
+        <button id="createSkillBtn" class="neon-btn">Створити</button>
+        <hr>
+        <h3>Існуючі навички</h3>
+        <div id="skillsList"></div>
+      </div>
+
+      <!-- Вкладка гравців -->
+      <div id="tab-players" class="tab-content">
+        <h3>Виберіть гравця</h3>
+        <select id="playerSelect"><option value="">-- Оберіть --</option></select>
+        <div id="playerActions" style="display:none;">
+          <h4>Додати компонент</h4>
+          <select id="allComponentsSelect"></select>
+          <button id="addCompToPlayer" class="neon-btn">Додати</button>
+          <h4>Додати пасивну навичку</h4>
+          <select id="allSkillsSelect"></select>
+          <button id="addSkillToPlayer" class="neon-btn">Додати</button>
+          <hr>
+          <h4>Інвентар гравця</h4>
+          <div id="playerInventory"></div>
+          <h4>Пасивні навички гравця</h4>
+          <div id="playerPassives"></div>
+        </div>
+      </div>
+
+      <!-- Вкладка налаштувань -->
+      <div id="tab-settings" class="tab-content">
+        <h3>Максимум скриптів</h3>
+        <input type="number" id="maxScriptsInput" value="3" min="1">
+        <button id="updateMaxScripts" class="neon-btn">Оновити</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/admin_skills.js"></script>
+</body>
+</html>

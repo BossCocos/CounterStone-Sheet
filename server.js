@@ -41,7 +41,19 @@ const playerSchema = new mongoose.Schema({
   statHistory: [String],
   className: { type: String, default: 'Новачок' },
   classAssignedLevel: { type: Number, default: 0 },
-  classAssignedStats: [String]   // дві назви характеристик, з яких складено поточний клас
+  classAssignedStats: [String],   // дві назви характеристик, з яких складено поточний клас
+  inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Component' }],
+  scripts: [{
+    name: String,
+    description: String,
+    oath: String,           // клятва
+    components: [{          // використані компоненти з ролями
+      component: { type: mongoose.Schema.Types.ObjectId, ref: 'Component' },
+      role: String          // роль/завдання (макс 100 символів)
+    }],
+    createdAt: { type: Date, default: Date.now }
+  }],
+  passiveSkills: [{ type: mongoose.Schema.Types.ObjectId, ref: 'PassiveSkill' }]
 });
 
 const Player = mongoose.model('Player', playerSchema);
@@ -155,7 +167,21 @@ function assignInitialClass(player) {
 }
 
 // Безпечне представлення гравця (без пароля)
-function sanitizePlayer(player) {
+async function sanitizePlayer(player) {
+  // отримуємо повні дані компонентів, навичок
+  const inventoryComps = await Component.find({ _id: { $in: player.inventory } }).lean();
+  const scriptsWithComps = await Promise.all(player.scripts.map(async (s) => {
+    const comps = await Component.find({ _id: { $in: s.components.map(c => c.component) } }).lean();
+    return {
+      ...s.toObject(),
+      componentDetails: s.components.map(sc => {
+        const comp = comps.find(c => c._id.equals(sc.component));
+        return { ...sc, component: comp };
+      })
+    };
+  }));
+  const passiveSkills = await PassiveSkill.find({ _id: { $in: player.passiveSkills } }).lean();
+
   return {
     nickname: player.nickname,
     discordName: player.discordName,
@@ -167,12 +193,15 @@ function sanitizePlayer(player) {
     maxHp: player.maxHp,
     currentMana: player.currentMana,
     maxMana: player.maxMana,
-    effects: player.effects || [],
+    effects: player.effects,
     stats: player.stats,
     statHistory: player.statHistory,
     className: player.className,
     classAssignedLevel: player.classAssignedLevel,
-    classAssignedStats: player.classAssignedStats
+    classAssignedStats: player.classAssignedStats,
+    inventory: inventoryComps,
+    scripts: scriptsWithComps,
+    passiveSkills: passiveSkills
   };
 }
 
@@ -209,7 +238,7 @@ io.on('connection', (socket) => {
         return callback({ error: 'Невірний пароль' });
       socket.playerId = discordName;
       socket.join(`player:${discordName}`);
-      socket.emit('player:state', sanitizePlayer(player));
+      socket.emit('player:state', await sanitizePlayer(player));
       callback({ success: true });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
@@ -256,15 +285,272 @@ io.on('connection', (socket) => {
 
       await player.save();
 
-      io.to(`player:${socket.playerId}`).emit('player:state', sanitizePlayer(player));
-      io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+      io.to(`player:${socket.playerId}`).emit('player:state', await sanitizePlayer(player));
+      io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
       callback({ success: true });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
   });
 
+    // Гравець: об'єднати компоненти у скрипт
+  socket.on('script:create', async ({ componentIds }, callback) => {
+    if (!socket.playerId) return callback({ error: 'Не авторизований' });
+    try {
+      const player = await Player.findOne({ discordName: socket.playerId });
+      if (!player) return callback({ error: 'Гравця не знайдено' });
+
+      const maxScripts = (await Settings.findOne({ key: 'maxScripts' }))?.value || 3;
+      if (player.scripts.length >= maxScripts) return callback({ error: 'Досягнуто максимуму скриптів' });
+
+      // Перевірити, що всі componentIds є в інвентарі
+      const comps = await Component.find({ _id: { $in: componentIds } });
+      if (comps.length !== 3) return callback({ error: 'Некоректний набір компонентів' });
+      // Перевірити, що типи різні: Тригер, Ядро, Вектор
+      const types = comps.map(c => c.type);
+      if (new Set(types).size !== 3) return callback({ error: 'Потрібні три різні типи' });
+      // Переконатися, що всі ID належать інвентарю гравця
+      const valid = componentIds.every(id => player.inventory.some(invId => invId.equals(id)));
+      if (!valid) return callback({ error: 'Деякі компоненти відсутні' });
+
+      // Видалити компоненти з інвентаря
+      player.inventory = player.inventory.filter(id => !componentIds.some(cid => cid.equals(id)));
+      // Додати скрипт з порожніми полями (гравець заповнить пізніше)
+      player.scripts.push({
+        name: '',
+        description: '',
+        oath: '',
+        components: comps.map(c => ({ component: c._id, role: '' })),
+        createdAt: new Date()
+      });
+      await player.save();
+
+      io.to(`player:${socket.playerId}`).emit('player:state', await sanitizePlayer(player));
+      io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
+      callback({ success: true, scriptIndex: player.scripts.length - 1 }); // повертаємо індекс для подальшого редагування
+    } catch (err) {
+      callback({ error: 'Помилка сервера' });
+    }
+  });
+
+  // Гравець: оновити скрипт (заповнити форму)
+  socket.on('script:update', async ({ scriptIndex, data }, callback) => {
+    if (!socket.playerId) return callback({ error: 'Не авторизований' });
+    try {
+      const player = await Player.findOne({ discordName: socket.playerId });
+      if (!player || !player.scripts[scriptIndex]) return callback({ error: 'Скрипт не знайдено' });
+      // Оновлюємо поля: name, description, oath, components.role
+      if (data.name) player.scripts[scriptIndex].name = data.name;
+      if (data.description) player.scripts[scriptIndex].description = data.description;
+      if (data.oath) player.scripts[scriptIndex].oath = data.oath;
+      if (data.components) {
+        // data.components: [{ componentId, role }]
+        for (let i = 0; i < player.scripts[scriptIndex].components.length; i++) {
+          const upd = data.components.find(c => c.componentId === player.scripts[scriptIndex].components[i].component.toString());
+          if (upd && upd.role) {
+            player.scripts[scriptIndex].components[i].role = upd.role.substring(0, 100);
+          }
+        }
+      }
+      await player.save();
+      io.to(`player:${socket.playerId}`).emit('player:state', await sanitizePlayer(player));
+      io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка сервера' });
+    }
+  });
+
+  // Гравець: роз'єднати скрипт
+  socket.on('script:disassemble', async ({ scriptIndex }, callback) => {
+    if (!socket.playerId) return callback({ error: 'Не авторизований' });
+    try {
+      const player = await Player.findOne({ discordName: socket.playerId });
+      if (!player || !player.scripts[scriptIndex]) return callback({ error: 'Скрипт не знайдено' });
+      const script = player.scripts[scriptIndex];
+      // Повернути компоненти в інвентар
+      const compIds = script.components.map(c => c.component);
+      player.inventory.push(...compIds);
+      // Видалити скрипт
+      player.scripts.splice(scriptIndex, 1);
+      await player.save();
+      io.to(`player:${socket.playerId}`).emit('player:state', await sanitizePlayer(player));
+      io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка сервера' });
+    }
+  });
   // ---------- АДМІН ----------
+  // Адмін: створити компонент
+  socket.on('component:create', async (data, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const comp = new Component(data);
+      await comp.save();
+      callback({ success: true, component: comp });
+    } catch (err) {
+      callback({ error: 'Помилка створення компонента' });
+    }
+  });
+
+  // Адмін: отримати всі компоненти (для свого списку)
+  socket.on('component:getAll', async (callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const comps = await Component.find().lean();
+      callback({ success: true, components: comps });
+    } catch (err) {
+      callback({ error: 'Помилка завантаження' });
+    }
+  });
+
+  // Адмін: видалити компонент (видалити з глобального списку і з інвентарів гравців)
+  socket.on('component:delete', async (componentId, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      await Component.findByIdAndDelete(componentId);
+      // Видаляємо з інвентарів усіх гравців
+      await Player.updateMany({}, { $pull: { inventory: componentId } });
+      // Також видаляємо зі скриптів? Компоненти в скриптах зберігаються як посилання; можна залишити або видалити скрипти, що містять цей компонент. Поки що просто видаляємо з інвентаря.
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка видалення' });
+    }
+  });
+
+  // Адмін: додати компонент гравцю (з існуючих)
+  socket.on('component:addToPlayer', async ({ discordName, componentId }, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const player = await Player.findOne({ discordName });
+      if (!player) return callback({ error: 'Гравця не знайдено' });
+      if (player.inventory.includes(componentId)) return callback({ error: 'Компонент вже є' });
+      player.inventory.push(componentId);
+      await player.save();
+      // Сповістити гравця (якщо онлайн)
+      io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка сервера' });
+    }
+  });
+
+  // Адмін: видалити компонент у гравця
+  socket.on('component:removeFromPlayer', async ({ discordName, componentId }, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const player = await Player.findOne({ discordName });
+      if (!player) return callback({ error: 'Гравця не знайдено' });
+      player.inventory.pull(componentId);
+      await player.save();
+      io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка сервера' });
+    }
+  });
+
+    // Адмін: створити навичку
+  socket.on('passiveSkill:create', async (data, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const skill = new PassiveSkill(data);
+      await skill.save();
+      callback({ success: true, skill });
+    } catch (err) {
+      callback({ error: 'Помилка створення' });
+    }
+  });
+
+  // Адмін: отримати всі навички
+  socket.on('passiveSkill:getAll', async (callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const skills = await PassiveSkill.find().lean();
+      callback({ success: true, skills });
+    } catch (err) {
+      callback({ error: 'Помилка' });
+    }
+  });
+
+  // Адмін: видалити навичку
+  socket.on('passiveSkill:delete', async (skillId, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      await PassiveSkill.findByIdAndDelete(skillId);
+      await Player.updateMany({}, { $pull: { passiveSkills: skillId } });
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка' });
+    }
+  });
+
+  // Адмін: додати гравцю
+  socket.on('passiveSkill:addToPlayer', async ({ discordName, skillId }, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const player = await Player.findOne({ discordName });
+      if (!player) return callback({ error: 'Гравця не знайдено' });
+      if (player.passiveSkills.includes(skillId)) return callback({ error: 'Навичка вже додана' });
+      player.passiveSkills.push(skillId);
+      await player.save();
+      io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка' });
+    }
+  });
+
+  // Адмін: видалити у гравця
+  socket.on('passiveSkill:removeFromPlayer', async ({ discordName, skillId }, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      const player = await Player.findOne({ discordName });
+      if (!player) return callback({ error: 'Гравця не знайдено' });
+      player.passiveSkills.pull(skillId);
+      await player.save();
+      io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка' });
+    }
+  });
+
+  socket.on('settings:get', async (callback) => {
+    try {
+      const maxScripts = await Settings.findOne({ key: 'maxScripts' });
+      callback({ maxScripts: maxScripts?.value || 3 });
+    } catch (err) {
+      callback({ maxScripts: 3 });
+    }
+  });
+
+  socket.on('settings:update', async ({ maxScripts }, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Немає прав' });
+    try {
+      await Settings.findOneAndUpdate({ key: 'maxScripts' }, { value: maxScripts }, { upsert: true });
+      callback({ success: true });
+    } catch (err) {
+      callback({ error: 'Помилка оновлення' });
+    }
+  });
+
+  // Отримати список гравців (для адміна)
+  socket.on('admin:getPlayer', async (discordName, callback) => {
+    if (!socket.isAdmin) return callback({ error: 'Недостатньо прав' });
+    try {
+        const player = await Player.findOne({ discordName });
+        if (!player) return callback({ error: 'Гравця не знайдено' });
+        const sanitized = await sanitizePlayer(player);
+        callback(null, sanitized);
+    } catch (err) {
+        callback({ error: 'Помилка сервера' });
+    }
+  });
+
+// Отримати гравця (admin:getPlayer) – у вас вже має бути, але переконайтеся, що він повертає inventory, passiveSkills як об'єкти (через sanitizePlayer)
+
  socket.on('admin:login', async ({ password }, callback) => {
     if (password !== ADMIN_PASSWORD) return callback({ error: 'Невірний пароль адміністратора' });
     socket.isAdmin = true;
@@ -287,7 +573,7 @@ io.on('connection', (socket) => {
     try {
       const player = await Player.findOne({ discordName });
       if (!player) return callback({ error: 'Гравця не знайдено' });
-      callback(null, sanitizePlayer(player));
+      callback(null, await sanitizePlayer(player));
     } catch (err) {
       callback({ error: 'Помилка сервера' });
     }
@@ -338,8 +624,8 @@ io.on('connection', (socket) => {
       recalcDerivedStats(player);
       await player.save();
 
-      io.to(`player:${discordName}`).emit('player:state', sanitizePlayer(player));
-      io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+      io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
+      io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
       callback({ success: true });
     } catch (err) {
       callback({ error: 'Помилка сервера' });
@@ -378,8 +664,8 @@ io.on('connection', (socket) => {
       if (type === 'nickname') player.nickname = value;
       else if (type === 'class') player.className = value;
       await player.save();
-      io.to(`player:${socket.playerId}`).emit('player:state', sanitizePlayer(player));
-      io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+      io.to(`player:${socket.playerId}`).emit('player:state', await sanitizePlayer(player));
+      io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
     } else {
       // Сповістити адміна про відмову (можна окрему подію)
     }
@@ -423,13 +709,14 @@ socket.on('admin:addEffect', async ({ discordName, effect }) => {
           sleep: { name: 'Сон', icon: 'sleep' },
           drain: { name: 'Виснаження', icon: 'drain' },
           doom: { name: 'Поразка', icon: 'doom' },
-          lucky: { name: 'Удача', icon: 'lucky' }
+          lucky: { name: 'Удача', icon: 'lucky' },
+          unknown: { name: 'Невідомий', icon: 'unknown' }
         };
         const eff = effectLib[effect] || { name: effect, icon: 'default' };
         player.effects.push(eff);
         await player.save();
-        io.to(`player:${discordName}`).emit('player:state', sanitizePlayer(player));
-        io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+        io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
+        io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
     } catch (err) {
         console.error(err);
     }
@@ -443,8 +730,8 @@ socket.on('admin:removeEffect', async ({ discordName, effectIndex }) => {
         if (!player || !player.effects[effectIndex]) return;
         player.effects.splice(effectIndex, 1);
         await player.save();
-        io.to(`player:${discordName}`).emit('player:state', sanitizePlayer(player));
-        io.to('admins').emit('admin:playerUpdated', sanitizePlayer(player));
+        io.to(`player:${discordName}`).emit('player:state', await sanitizePlayer(player));
+        io.to('admins').emit('admin:playerUpdated', await sanitizePlayer(player));
     } catch (err) {
         console.error(err);
     }
@@ -475,3 +762,42 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Сервер запущено на порту ${PORT}`);
 });
+
+// ===== Модель Компонента =====
+const componentSchema = new mongoose.Schema({
+  name: String,
+  type: { type: String, enum: ['Тригер', 'Ядро', 'Вектор'] },
+  category: { type: String, enum: ['Фізика', 'Просторові', 'Сенсорні', 'Елементарні', 'Психологічні', 'Надскладні'] },
+  rarity: { type: String, enum: ['Звичайний', 'Незвичайний', 'Рідкісний', 'Епічний', 'Легендарний', 'Унікальний'] },
+  description: String,
+  limitations: String,
+  source: String,
+  createdByAdmin: { type: Boolean, default: true }  // щоб відрізняти
+});
+const Component = mongoose.model('Component', componentSchema);
+
+// ===== Модель Пасивної Навички =====
+const passiveSkillSchema = new mongoose.Schema({
+  name: String,
+  rarity: { type: String, enum: ['Звичайний', 'Незвичайний', 'Рідкісний', 'Епічний', 'Легендарний', 'Унікальний'] },
+  description: String,
+  source: String,
+  createdByAdmin: { type: Boolean, default: true }
+});
+const PassiveSkill = mongoose.model('PassiveSkill', passiveSkillSchema);
+
+// ===== Модель Налаштувань =====
+const settingsSchema = new mongoose.Schema({
+  key: { type: String, unique: true },
+  value: mongoose.Schema.Types.Mixed
+});
+const Settings = mongoose.model('Settings', settingsSchema);
+
+// Ініціалізація налаштувань (maxScripts = 3 за замовчуванням)
+async function initSettings() {
+  const exists = await Settings.findOne({ key: 'maxScripts' });
+  if (!exists) {
+    await new Settings({ key: 'maxScripts', value: 3 }).save();
+  }
+}
+initSettings();
