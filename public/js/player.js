@@ -1,40 +1,51 @@
 const socket = io();
 let playerData = null;
 
-const savedToken = sessionStorage.getItem('authToken');
-if (savedToken) {
-  socket.emit('auth:token', savedToken, (res) => {
-    if (res.success && !res.isAdmin) {
-      loginContainer.style.display = 'none';
-      playerContainer.style.display = 'block';
-      // player:state прийде автоматично
-    } else {
-      sessionStorage.removeItem('authToken');
-      loginContainer.style.display = 'block';
-    }
-  });
-} else {
-  loginContainer.style.display = 'block';
-}
-// Елементи DOM
-const loginContainer = document.getElementById('loginFormContainer');
-const playerContainer = document.getElementById('playerContainer');
-const modal = document.getElementById('changeRequestModal');
-const changeMessage = document.getElementById('changeRequestMessage');
-let currentChangeRequest = null; // { type: 'name'/'class', value }
+document.addEventListener('DOMContentLoaded', () => {
+    const loginContainer = document.getElementById('loginFormContainer');
+    const playerContainer = document.getElementById('playerContainer');
 
-// Повторний вхід
-document.getElementById('loginAgainForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const discordName = document.getElementById('discordName').value.trim();
-  const password = document.getElementById('password').value;
-  socket.emit('player:login', { discordName, password }, (resp) => {
-    if (resp.error) {
-      document.getElementById('loginError').textContent = resp.error;
+    // Автологін
+    const savedToken = sessionStorage.getItem('authToken');
+    if (savedToken) {
+        socket.emit('auth:token', savedToken, (res) => {
+            if (res.success && !res.isAdmin) {
+                loginContainer.style.display = 'none';
+                playerContainer.style.display = 'block';
+                // player:state прийде автоматично (сервер його надсилає в auth:token)
+            } else {
+                sessionStorage.removeItem('authToken');
+                loginContainer.style.display = 'block';
+                playerContainer.style.display = 'none';
+            }
+        });
     } else {
-            sessionStorage.setItem('authToken', res.token);
-        }
-  });
+        loginContainer.style.display = 'block';
+        playerContainer.style.display = 'none';
+    }
+
+    // Ручний вхід
+    document.getElementById('loginAgainForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const discordName = document.getElementById('discordName').value.trim();
+        const password = document.getElementById('password').value;
+        socket.emit('player:login', { discordName, password }, (res) => {
+            if (res.error) {
+                document.getElementById('loginError').textContent = res.error;
+            } else {
+                sessionStorage.setItem('authToken', res.token);
+                // приховування форми відбудеться через player:state
+            }
+        });
+    });
+});
+
+// ---- Отримання стану (поза DOMContentLoaded, бо всередині використовуємо безпечно) ----
+socket.on('player:state', (data) => {
+    playerData = data;
+    document.getElementById('loginFormContainer').style.display = 'none';
+    document.getElementById('playerContainer').style.display = 'block';
+    renderPlayer();
 });
 
 // Отримання стану персонажа

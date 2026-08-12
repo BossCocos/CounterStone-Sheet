@@ -1,35 +1,47 @@
 const socket = io();
 let selectedPlayerId = null;
 
-const savedToken = sessionStorage.getItem('authToken');
-if (savedToken) {
-  socket.emit('auth:token', savedToken, (res) => {
-    if (res.success && !res.isAdmin) {
-      loginContainer.style.display = 'none';
-      playerContainer.style.display = 'block';
-      // player:state прийде автоматично
+document.addEventListener('DOMContentLoaded', () => {
+    const adminLoginForm = document.getElementById('adminLoginForm');
+    const adminContent = document.getElementById('adminContent');
+
+    const savedToken = sessionStorage.getItem('authToken');
+    if (savedToken) {
+        socket.emit('auth:token', savedToken, (res) => {
+            if (res.success && res.isAdmin) {
+                adminLoginForm.style.display = 'none';
+                adminContent.style.display = 'block';
+                // Запитати список гравців, бо ми не отримуємо його при автологіні
+                socket.emit('admin:getPlayerList', (players) => {
+                    renderPlayerList(players);
+                });
+                setupSocketListeners();
+            } else {
+                sessionStorage.removeItem('authToken');
+                adminLoginForm.style.display = 'block';
+                adminContent.style.display = 'none';
+            }
+        });
     } else {
-      sessionStorage.removeItem('authToken');
-      loginContainer.style.display = 'block';
+        adminLoginForm.style.display = 'block';
+        adminContent.style.display = 'none';
     }
-  });
-} else {
-  loginContainer.style.display = 'block';
-}
-// Логін
-document.getElementById('adminEnter').addEventListener('click', () => {
-  const pass = document.getElementById('adminPass').value;
-  socket.emit('admin:login', { password: pass }, (res) => {
-    if (res.error) {
-      document.getElementById('adminError').textContent = res.error;
-    } else {
-            sessionStorage.setItem('authToken', res.token);
-            document.getElementById('adminLoginForm').style.display = 'none';
-            document.getElementById('adminContent').style.display = 'block';
-            renderPlayerList(res.players);
-            setupSocketListeners();
-        }
-  });
+
+    // Кнопка входу
+    document.getElementById('adminEnter').addEventListener('click', () => {
+        const pass = document.getElementById('adminPass').value;
+        socket.emit('admin:login', { password: pass }, (res) => {
+            if (res.error) {
+                document.getElementById('adminError').textContent = res.error;
+            } else {
+                sessionStorage.setItem('authToken', res.token);
+                adminLoginForm.style.display = 'none';
+                adminContent.style.display = 'block';
+                renderPlayerList(res.players);
+                setupSocketListeners();
+            }
+        });
+    });
 });
 
 function renderPlayerList(list) {

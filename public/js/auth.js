@@ -1,6 +1,6 @@
 const socket = io();
 
-// Перевірка токена
+// Якщо є дійсний токен – одразу перейти на потрібну сторінку
 const savedToken = sessionStorage.getItem('authToken');
 if (savedToken) {
     socket.emit('auth:token', savedToken, (res) => {
@@ -15,78 +15,80 @@ if (savedToken) {
         }
     });
 }
-// Перемикання форм
+
+// ==== Функції перемикання форм (залишаються без змін) ====
 function toggleForms() {
-  document.getElementById('loginCard').classList.toggle('hidden');
-  document.getElementById('registerCard').classList.toggle('hidden');
+    document.getElementById('loginCard').classList.toggle('hidden');
+    document.getElementById('registerCard').classList.toggle('hidden');
 }
 function showAdminLogin() {
-  document.getElementById('loginCard').classList.add('hidden');
-  document.getElementById('adminCard').classList.remove('hidden');
+    document.getElementById('loginCard').classList.add('hidden');
+    document.getElementById('adminCard').classList.remove('hidden');
 }
 function hideAdminLogin() {
-  document.getElementById('adminCard').classList.add('hidden');
-  document.getElementById('loginCard').classList.remove('hidden');
+    document.getElementById('adminCard').classList.add('hidden');
+    document.getElementById('loginCard').classList.remove('hidden');
 }
 window.toggleForms = toggleForms;
 window.showAdminLogin = showAdminLogin;
 window.hideAdminLogin = hideAdminLogin;
 
-// Вхід гравця
+// ==== Вхід гравця ====
 document.getElementById('loginForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const discordName = document.getElementById('loginDiscordName').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  socket.emit('player:login', { discordName, password }, (response) => {
-    if (response.error) {
-      document.getElementById('loginError').textContent = response.error;
-      document.getElementById('loginError').style.display = 'block';
-    } else {
-      sessionStorage.setItem('authToken', res.token);
-      sessionStorage.setItem('playerId', discordName);
-      window.location.href = 'player.html';
-    }
-  });
+    e.preventDefault();
+    const discordName = document.getElementById('loginDiscordName').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    socket.emit('player:login', { discordName, password }, (res) => {
+        if (res.error) {
+            document.getElementById('loginError').textContent = res.error;
+            document.getElementById('loginError').style.display = 'block';
+        } else {
+            // Зберігаємо токен і ID, потім переходимо
+            sessionStorage.setItem('authToken', res.token);
+            sessionStorage.setItem('playerId', discordName);
+            window.location.href = 'player.html';
+        }
+    });
 });
 
-// Реєстрація
+// ==== Реєстрація ====
 document.getElementById('registerForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const nickname = document.getElementById('regNickname').value.trim();
-  const discordName = document.getElementById('regDiscordName').value.trim();
-  const password = document.getElementById('regPassword').value;
-  const confirm = document.getElementById('regConfirmPassword').value;
+    e.preventDefault();
+    const nickname = document.getElementById('regNickname').value.trim();
+    const discordName = document.getElementById('regDiscordName').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirm = document.getElementById('regConfirmPassword').value;
 
-  if (password !== confirm) {
-    document.getElementById('registerError').textContent = 'Паролі не співпадають';
-    document.getElementById('registerError').style.display = 'block';
-    return;
-  }
-
-  socket.emit('player:register', { nickname, discordName, password }, (response) => {
-    if (response.error) {
-      document.getElementById('registerError').textContent = response.error;
-      document.getElementById('registerError').style.display = 'block';
-    } else {
-      document.getElementById('registerSuccess').textContent = 'Реєстрація успішна! Тепер увійдіть.';
-      document.getElementById('registerSuccess').style.display = 'block';
-      document.getElementById('registerError').style.display = 'none';
-      setTimeout(() => toggleForms(), 1500);
+    if (password !== confirm) {
+        document.getElementById('registerError').textContent = 'Паролі не співпадають';
+        document.getElementById('registerError').style.display = 'block';
+        return;
     }
-  });
+
+    socket.emit('player:register', { nickname, discordName, password }, (response) => {
+        if (response.error) {
+            document.getElementById('registerError').textContent = response.error;
+            document.getElementById('registerError').style.display = 'block';
+        } else {
+            document.getElementById('registerSuccess').textContent = 'Реєстрація успішна! Тепер увійдіть.';
+            document.getElementById('registerSuccess').style.display = 'block';
+            document.getElementById('registerError').style.display = 'none';
+            setTimeout(() => toggleForms(), 1500);
+        }
+    });
 });
 
-// Вхід адміна
+// ==== Вхід адміна ====
 document.getElementById('adminForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const password = document.getElementById('adminPassword').value;
-  socket.emit('admin:login', { password }, (response) => {
-    if (response.error) {
-      document.getElementById('adminError').textContent = response.error;
-      document.getElementById('adminError').style.display = 'block';
-    } else {
-      sessionStorage.setItem('isAdmin', 'true');
-      window.location.href = 'admin.html';
-    }
-  });
+    e.preventDefault();
+    const password = document.getElementById('adminPassword').value;
+    socket.emit('admin:login', { password }, (res) => {
+        if (res.error) {
+            document.getElementById('adminError').textContent = res.error;
+            document.getElementById('adminError').style.display = 'block';
+        } else {
+            sessionStorage.setItem('authToken', res.token);
+            window.location.href = 'admin.html';
+        }
+    });
 });
