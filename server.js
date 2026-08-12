@@ -580,6 +580,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('admin:getPlayerList', async (callback) => {
+    if (!socket.isAdmin) return callback([]);
+    try {
+        const players = await Player.find({}, 'discordName nickname level').lean();
+        callback(players);
+    } catch (e) {
+        callback([]);
+    }
+  });
+  
   // Отримати список гравців (для адміна)
   socket.on('admin:getPlayer', async (discordName, callback) => {
     if (!socket.isAdmin) return callback({ error: 'Недостатньо прав' });

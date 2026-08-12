@@ -9,6 +9,9 @@ if (savedToken) {
     if (res.success && res.isAdmin) {
       document.getElementById('adminLoginBlock').style.display = 'none';
       document.getElementById('adminMain').style.display = 'block';
+      socket.emit('admin:getPlayerList', (players) => {
+                renderPlayerList(players);
+            });
       initAdmin();
       return;
     } else {
