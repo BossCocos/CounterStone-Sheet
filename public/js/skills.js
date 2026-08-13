@@ -1,26 +1,11 @@
 const socket = io();
 let playerData = null;
 let selectedComponentId = null;
-let currentScriptIndex = -1; // індекс скрипта, що редагується
+let currentScriptIndex = -1;
 const slots = { trigger: null, core: null, vector: null };
 
 document.addEventListener('DOMContentLoaded', () => {
-  const savedToken = sessionStorage.getItem('authToken');
-  if (savedToken) {
-    socket.emit('auth:token', savedToken, (res) => {
-      if (res.success && !res.isAdmin) {
-        loginContainer.style.display = 'none';
-        playerContainer.style.display = 'block';
-        // player:state прийде автоматично
-      } else {
-        sessionStorage.removeItem('authToken');
-        loginContainer.style.display = 'block';
-      }
-    });
-  } else {
-    loginContainer.style.display = 'block';
-  }
-  // ---- Авторизація ----
+  // Отримуємо правильні елементи
   const loginBlock = document.getElementById('loginBlock');
   const skillsMain = document.getElementById('skillsMain');
   const loginDiscord = document.getElementById('loginDiscord');
@@ -28,38 +13,57 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginBtn = document.getElementById('loginBtn');
   const loginError = document.getElementById('loginError');
 
-  // Перевіряємо, чи є збережений playerId (можна використати для автозаповнення)
+  // Автологін через токен
+  const savedToken = sessionStorage.getItem('authToken');
+  if (savedToken) {
+    socket.emit('auth:token', savedToken, (res) => {
+      if (res.success && !res.isAdmin) {
+        loginBlock.style.display = 'none';
+        skillsMain.style.display = 'block';
+        // player:state прийде автоматично
+      } else {
+        sessionStorage.removeItem('authToken');
+        loginBlock.style.display = 'block';
+        skillsMain.style.display = 'none';
+      }
+    });
+  } else {
+    loginBlock.style.display = 'block';
+    skillsMain.style.display = 'none';
+  }
+
+  // Автозаповнення імені з sessionStorage
   const savedId = sessionStorage.getItem('playerId');
   if (savedId) {
     loginDiscord.value = savedId;
-    loginBlock.style.display = 'block';
-  } else {
-    loginBlock.style.display = 'block';
   }
 
+  // Ручний вхід
   loginBtn.addEventListener('click', () => {
     const name = loginDiscord.value.trim();
     const pass = loginPass.value;
     if (!name || !pass) return;
+
     socket.emit('player:login', { discordName: name, password: pass }, (resp) => {
       if (resp.error) {
         loginError.textContent = resp.error;
         return;
-      } else {
-              sessionStorage.setItem('authToken', res.token);
       }
-      // Успіх – зберігаємо ID та показуємо інтерфейс
+      // Успіх: зберігаємо токен і ID, показуємо інтерфейс
+      sessionStorage.setItem('authToken', resp.token);   // було res.token – виправлено на resp
       sessionStorage.setItem('playerId', name);
       loginBlock.style.display = 'none';
       skillsMain.style.display = 'block';
-      // Запитуємо початковий стан (хоча player:state прийде після логіну)
+      // player:state також прийде, але ми вже показали інтерфейс
     });
   });
 });
 
-// ---- Отримання даних гравця ----
+// Далі ваші функції renderInventory, renderScripts тощо залишаються без змін
 socket.on('player:state', (data) => {
   playerData = data;
+  document.getElementById('loginBlock').style.display = 'none';
+  document.getElementById('skillsMain').style.display = 'block';
   renderInventory();
   renderScripts();
   updateCombineButton();
