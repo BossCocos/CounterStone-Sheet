@@ -4,54 +4,56 @@ let selectedComponentId = null;
 let currentScriptIndex = -1; // індекс скрипта, що редагується
 const slots = { trigger: null, core: null, vector: null };
 
-const savedToken = sessionStorage.getItem('authToken');
-if (savedToken) {
-  socket.emit('auth:token', savedToken, (res) => {
-    if (res.success && !res.isAdmin) {
-      loginContainer.style.display = 'none';
-      playerContainer.style.display = 'block';
-      // player:state прийде автоматично
-    } else {
-      sessionStorage.removeItem('authToken');
-      loginContainer.style.display = 'block';
-    }
-  });
-} else {
-  loginContainer.style.display = 'block';
-}
-// ---- Авторизація ----
-const loginBlock = document.getElementById('loginBlock');
-const skillsMain = document.getElementById('skillsMain');
-const loginDiscord = document.getElementById('loginDiscord');
-const loginPass = document.getElementById('loginPass');
-const loginBtn = document.getElementById('loginBtn');
-const loginError = document.getElementById('loginError');
+document.addEventListener('DOMContentLoaded', () => {
+  const savedToken = sessionStorage.getItem('authToken');
+  if (savedToken) {
+    socket.emit('auth:token', savedToken, (res) => {
+      if (res.success && !res.isAdmin) {
+        loginContainer.style.display = 'none';
+        playerContainer.style.display = 'block';
+        // player:state прийде автоматично
+      } else {
+        sessionStorage.removeItem('authToken');
+        loginContainer.style.display = 'block';
+      }
+    });
+  } else {
+    loginContainer.style.display = 'block';
+  }
+  // ---- Авторизація ----
+  const loginBlock = document.getElementById('loginBlock');
+  const skillsMain = document.getElementById('skillsMain');
+  const loginDiscord = document.getElementById('loginDiscord');
+  const loginPass = document.getElementById('loginPass');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
 
-// Перевіряємо, чи є збережений playerId (можна використати для автозаповнення)
-const savedId = sessionStorage.getItem('playerId');
-if (savedId) {
-  loginDiscord.value = savedId;
-  loginBlock.style.display = 'block';
-} else {
-  loginBlock.style.display = 'block';
-}
+  // Перевіряємо, чи є збережений playerId (можна використати для автозаповнення)
+  const savedId = sessionStorage.getItem('playerId');
+  if (savedId) {
+    loginDiscord.value = savedId;
+    loginBlock.style.display = 'block';
+  } else {
+    loginBlock.style.display = 'block';
+  }
 
-loginBtn.addEventListener('click', () => {
-  const name = loginDiscord.value.trim();
-  const pass = loginPass.value;
-  if (!name || !pass) return;
-  socket.emit('player:login', { discordName: name, password: pass }, (resp) => {
-    if (resp.error) {
-      loginError.textContent = resp.error;
-      return;
-    } else {
-            sessionStorage.setItem('authToken', res.token);
-    }
-    // Успіх – зберігаємо ID та показуємо інтерфейс
-    sessionStorage.setItem('playerId', name);
-    loginBlock.style.display = 'none';
-    skillsMain.style.display = 'block';
-    // Запитуємо початковий стан (хоча player:state прийде після логіну)
+  loginBtn.addEventListener('click', () => {
+    const name = loginDiscord.value.trim();
+    const pass = loginPass.value;
+    if (!name || !pass) return;
+    socket.emit('player:login', { discordName: name, password: pass }, (resp) => {
+      if (resp.error) {
+        loginError.textContent = resp.error;
+        return;
+      } else {
+              sessionStorage.setItem('authToken', res.token);
+      }
+      // Успіх – зберігаємо ID та показуємо інтерфейс
+      sessionStorage.setItem('playerId', name);
+      loginBlock.style.display = 'none';
+      skillsMain.style.display = 'block';
+      // Запитуємо початковий стан (хоча player:state прийде після логіну)
+    });
   });
 });
 

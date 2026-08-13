@@ -3,42 +3,44 @@ let selectedPlayer = null;
 let allPlayers = [];
 
 // ---- Автоматичний вхід через токен ----
-const savedToken = sessionStorage.getItem('authToken');
-if (savedToken) {
-  socket.emit('auth:token', savedToken, (res) => {
-    if (res.success && res.isAdmin) {
+document.addEventListener('DOMContentLoaded', () => {
+  const savedToken = sessionStorage.getItem('authToken');
+  if (savedToken) {
+    socket.emit('auth:token', savedToken, (res) => {
+      if (res.success && res.isAdmin) {
+        document.getElementById('adminLoginBlock').style.display = 'none';
+        document.getElementById('adminMain').style.display = 'block';
+        socket.emit('admin:getPlayerList', (players) => {
+                  renderPlayerList(players);
+              });
+        initAdmin();
+        return;
+      } else {
+        sessionStorage.removeItem('authToken');
+      }
+    });
+  }
+
+  // Якщо токена немає або він недійсний, показуємо форму логіну
+  document.getElementById('adminLoginBlock').style.display = 'block';
+  document.getElementById('adminMain').style.display = 'none';
+
+  // ---- Логін через форму ----
+  document.getElementById('adminLoginBtn').addEventListener('click', () => {
+    const pass = document.getElementById('adminPass').value;
+    socket.emit('admin:login', { password: pass }, (res) => {
+      if (res.error) {
+        document.getElementById('adminLoginError').textContent = res.error;
+        return;
+      }
+      sessionStorage.setItem('authToken', res.token);
       document.getElementById('adminLoginBlock').style.display = 'none';
       document.getElementById('adminMain').style.display = 'block';
-      socket.emit('admin:getPlayerList', (players) => {
-                renderPlayerList(players);
-            });
+      if (res.players) {
+        populatePlayerSelect(res.players);
+      }
       initAdmin();
-      return;
-    } else {
-      sessionStorage.removeItem('authToken');
-    }
-  });
-}
-
-// Якщо токена немає або він недійсний, показуємо форму логіну
-document.getElementById('adminLoginBlock').style.display = 'block';
-document.getElementById('adminMain').style.display = 'none';
-
-// ---- Логін через форму ----
-document.getElementById('adminLoginBtn').addEventListener('click', () => {
-  const pass = document.getElementById('adminPass').value;
-  socket.emit('admin:login', { password: pass }, (res) => {
-    if (res.error) {
-      document.getElementById('adminLoginError').textContent = res.error;
-      return;
-    }
-    sessionStorage.setItem('authToken', res.token);
-    document.getElementById('adminLoginBlock').style.display = 'none';
-    document.getElementById('adminMain').style.display = 'block';
-    if (res.players) {
-      populatePlayerSelect(res.players);
-    }
-    initAdmin();
+    });
   });
 });
 
